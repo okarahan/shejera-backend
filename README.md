@@ -14,6 +14,10 @@ Frontend: [shejera-frontend](https://github.com/okarahan/shejera-frontend)
 | **PostgreSQL** | Datenbank |
 | **HikariCP** | Connection Pool |
 
+## Voraussetzungen
+
+- JDK 21 (für `./gradlew`; das Docker-Image bringt JDK 21 mit)
+
 ## Lokal
 
 PostgreSQL starten:

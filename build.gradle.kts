@@ -1,6 +1,6 @@
 plugins {
-    kotlin("jvm") version "2.1.10"
-    kotlin("plugin.serialization") version "2.1.10"
+    kotlin("jvm") version "2.3.21"
+    kotlin("plugin.serialization") version "2.3.21"
     id("io.ktor.plugin") version "3.5.1"
     id("org.jooq.jooq-codegen-gradle") version "3.21.6"
 }

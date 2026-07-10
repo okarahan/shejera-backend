@@ -25,7 +25,7 @@ fun Route.healthRoutes() {
     get("/ready") {
         val isReady =
             runCatching {
-                application.dataSource().connection.use { connection ->
+                call.application.dataSource().connection.use { connection ->
                     connection.isValid(2)
                 }
             }.getOrDefault(false)
