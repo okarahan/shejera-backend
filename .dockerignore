@@ -1,3 +1,9 @@
 .git
 .github
 README.md
+.gradle
+build
+out
+.idea
+*.iml
+docker-compose.yml

@@ -1,7 +1,15 @@
-FROM python:3.12-alpine
+FROM gradle:8-jdk21-alpine AS build
 
 WORKDIR /app
-COPY src/main.py .
+COPY gradle gradle
+COPY gradlew build.gradle.kts settings.gradle.kts gradle.properties ./
+COPY src src
+RUN chmod +x gradlew && ./gradlew buildFatJar --no-daemon
+
+FROM eclipse-temurin:21-jre-alpine
+
+WORKDIR /app
+COPY --from=build /app/build/libs/*-all.jar app.jar
 
 EXPOSE 8080
-CMD ["python", "main.py"]
+CMD ["java", "-jar", "app.jar"]
