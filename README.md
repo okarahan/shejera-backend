@@ -16,7 +16,8 @@ Frontend: [shejera-frontend](https://github.com/okarahan/shejera-frontend)
 
 ## Voraussetzungen
 
-- JDK 21 (für `./gradlew`; das Docker-Image bringt JDK 21 mit)
+- **JDK 21** für den Build. Mit dem Gradle Wrapper wird JDK 21 beim ersten `./gradlew`-Lauf automatisch heruntergeladen, falls es lokal fehlt (`gradle/gradle-daemon-jvm.properties`).
+- Alternativ: `export JAVA_HOME=$(/usr/libexec/java_home -v 21)` (macOS) oder Temurin 21 manuell installieren.
 
 ## Lokal
 
