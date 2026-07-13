@@ -8,6 +8,7 @@ import com.shejera.repositories.TreeRepository
 import com.shejera.routes.familyRoutes
 import com.shejera.routes.healthRoutes
 import com.shejera.routes.individualRoutes
+import com.shejera.routes.openApiRoutes
 import com.shejera.services.FamilyService
 import com.shejera.services.IndividualService
 import io.ktor.server.application.Application
@@ -42,6 +43,7 @@ fun Application.configureRouting() {
 
     routing {
         healthRoutes()
+        openApiRoutes()
         individualRoutes(individualService)
         familyRoutes(familyService)
     }

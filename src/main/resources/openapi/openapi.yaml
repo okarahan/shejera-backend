@@ -1,0 +1,639 @@
+openapi: 3.0.3
+info:
+  title: Shejera API
+  description: |
+    REST API for the Shejera family tree backend (GEDCOM 7 oriented).
+
+    GEDCOM concepts:
+    - `individual` maps to INDI records (`xref` e.g. I1)
+    - `family` maps to FAM records (`xref` e.g. F1)
+    - Relationships are modeled via families (spouses, children), not direct person-to-person links
+  version: 0.1.0
+  contact:
+    name: Shejera Backend
+
+servers:
+  - url: http://localhost:8080
+    description: Local development
+
+tags:
+  - name: health
+    description: Liveness and readiness probes
+  - name: individuals
+    description: Persons (GEDCOM INDI)
+  - name: families
+    description: Families (GEDCOM FAM)
+
+paths:
+  /:
+    get:
+      tags: [health]
+      summary: Plain-text liveness check
+      operationId: root
+      responses:
+        "200":
+          description: Service is running
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: shejera ok
+
+  /health:
+    get:
+      tags: [health]
+      summary: Health check
+      operationId: health
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatusResponse"
+
+  /ready:
+    get:
+      tags: [health]
+      summary: Readiness check (includes database)
+      operationId: ready
+      responses:
+        "200":
+          description: Ready
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatusResponse"
+        "503":
+          description: Not ready
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatusResponse"
+
+  /individuals:
+    get:
+      tags: [individuals]
+      summary: List all individuals
+      operationId: listIndividuals
+      responses:
+        "200":
+          description: List of individuals
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/IndividualResponse"
+    post:
+      tags: [individuals]
+      summary: Create an individual
+      operationId: createIndividual
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateIndividualRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IndividualResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /individuals/{id}:
+    parameters:
+      - $ref: "#/components/parameters/UuidPathId"
+    get:
+      tags: [individuals]
+      summary: Get individual by ID
+      operationId: getIndividual
+      responses:
+        "200":
+          description: Individual
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IndividualResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      tags: [individuals]
+      summary: Update an individual
+      operationId: updateIndividual
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateIndividualRequest"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IndividualResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [individuals]
+      summary: Delete an individual
+      operationId: deleteIndividual
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /individuals/{id}/events:
+    parameters:
+      - $ref: "#/components/parameters/UuidPathId"
+    get:
+      tags: [individuals]
+      summary: List events for an individual
+      operationId: listIndividualEvents
+      responses:
+        "200":
+          description: Events
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/IndividualEventResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      tags: [individuals]
+      summary: Add an event to an individual
+      operationId: createIndividualEvent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateIndividualEventRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IndividualEventResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /families:
+    get:
+      tags: [families]
+      summary: List all families
+      operationId: listFamilies
+      responses:
+        "200":
+          description: List of families
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FamilyResponse"
+    post:
+      tags: [families]
+      summary: Create a family with spouses
+      description: |
+        Creates a FAM record. Each marriage/partnership is a separate family.
+        Optionally creates a MARR event when `marriage` is provided.
+      operationId: createFamily
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateFamilyRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FamilyResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /families/{id}:
+    parameters:
+      - $ref: "#/components/parameters/UuidPathId"
+    get:
+      tags: [families]
+      summary: Get family with spouses, children, and events
+      operationId: getFamily
+      responses:
+        "200":
+          description: Family
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FamilyResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [families]
+      summary: Delete a family
+      operationId: deleteFamily
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /families/{id}/children:
+    parameters:
+      - $ref: "#/components/parameters/UuidPathId"
+    post:
+      tags: [families]
+      summary: Add a child to a family
+      operationId: addFamilyChild
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddChildRequest"
+      responses:
+        "201":
+          description: Child linked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChildResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /families/{id}/events:
+    parameters:
+      - $ref: "#/components/parameters/UuidPathId"
+    post:
+      tags: [families]
+      summary: Add an event to a family
+      operationId: createFamilyEvent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateFamilyEventRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FamilyEventResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+components:
+  parameters:
+    UuidPathId:
+      name: id
+      in: path
+      required: true
+      description: Resource UUID
+      schema:
+        type: string
+        format: uuid
+
+  responses:
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Conflict:
+      description: Conflict (e.g. duplicate record)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+  schemas:
+    StatusResponse:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          example: ok
+
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+          example: Individual not found
+
+    Sex:
+      type: string
+      enum: [M, F, X, U]
+      description: GEDCOM 7 SEX values
+
+    SpouseRole:
+      type: string
+      enum: [HUSB, WIFE]
+      description: GEDCOM FAM.HUSB / FAM.WIFE
+
+    Pedigree:
+      type: string
+      enum: [BIRTH, ADOPTED, FOSTER, SEALING, STEP, CHALLENGED, DISPROVEN]
+      description: GEDCOM FAMC.PEDI
+
+    CreateIndividualRequest:
+      type: object
+      required: [givenName, surname]
+      properties:
+        givenName:
+          type: string
+          example: Max
+        surname:
+          type: string
+          example: Mustermann
+        sex:
+          $ref: "#/components/schemas/Sex"
+        isLiving:
+          type: boolean
+          default: true
+        biography:
+          type: string
+          description: Stored as GEDCOM NOTE linked to the individual
+          example: Carpenter in Berlin.
+
+    UpdateIndividualRequest:
+      type: object
+      properties:
+        sex:
+          $ref: "#/components/schemas/Sex"
+        isLiving:
+          type: boolean
+        givenName:
+          type: string
+        surname:
+          type: string
+        biography:
+          type: string
+
+    IndividualResponse:
+      type: object
+      required: [id, xref, isLiving]
+      properties:
+        id:
+          type: string
+          format: uuid
+        xref:
+          type: string
+          description: GEDCOM cross-reference (without @), e.g. I1
+          example: I1
+        sex:
+          $ref: "#/components/schemas/Sex"
+        isLiving:
+          type: boolean
+        givenName:
+          type: string
+        surname:
+          type: string
+        biography:
+          type: string
+          nullable: true
+
+    CreateIndividualEventRequest:
+      type: object
+      required: [tag]
+      properties:
+        tag:
+          type: string
+          description: GEDCOM event tag
+          example: BIRT
+          enum: [BIRT, DEAT, CHR, BURI, OCCU, EVEN]
+        eventType:
+          type: string
+          description: Required for generic EVEN tags (GEDCOM TYPE)
+        dateText:
+          type: string
+          description: Original GEDCOM date string
+          example: ABT 1850
+        dateSort:
+          type: string
+          format: date
+          description: Normalized ISO date for sorting (YYYY-MM-DD)
+        placeName:
+          type: string
+          example: Berlin, Germany
+        description:
+          type: string
+
+    IndividualEventResponse:
+      type: object
+      required: [id, tag]
+      properties:
+        id:
+          type: string
+          format: uuid
+        tag:
+          type: string
+        eventType:
+          type: string
+          nullable: true
+        dateText:
+          type: string
+          nullable: true
+        dateSort:
+          type: string
+          format: date
+          nullable: true
+        placeName:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+
+    SpouseRequest:
+      type: object
+      required: [individualId, role]
+      properties:
+        individualId:
+          type: string
+          format: uuid
+        role:
+          $ref: "#/components/schemas/SpouseRole"
+
+    MarriageEventRequest:
+      type: object
+      properties:
+        dateText:
+          type: string
+          example: 15 JUN 1980
+        dateSort:
+          type: string
+          format: date
+        placeName:
+          type: string
+        description:
+          type: string
+
+    CreateFamilyRequest:
+      type: object
+      required: [spouses]
+      properties:
+        spouses:
+          type: array
+          minItems: 1
+          maxItems: 2
+          items:
+            $ref: "#/components/schemas/SpouseRequest"
+        marriage:
+          $ref: "#/components/schemas/MarriageEventRequest"
+          description: Optional; creates a MARR family event
+
+    AddChildRequest:
+      type: object
+      required: [individualId]
+      properties:
+        individualId:
+          type: string
+          format: uuid
+        pedigree:
+          $ref: "#/components/schemas/Pedigree"
+          default: BIRTH
+        sortOrder:
+          type: integer
+          default: 0
+
+    SpouseResponse:
+      type: object
+      required: [individualId, xref, role, sortOrder]
+      properties:
+        individualId:
+          type: string
+          format: uuid
+        xref:
+          type: string
+        role:
+          $ref: "#/components/schemas/SpouseRole"
+        givenName:
+          type: string
+          nullable: true
+        surname:
+          type: string
+          nullable: true
+        sortOrder:
+          type: integer
+
+    ChildResponse:
+      type: object
+      required: [individualId, xref, sortOrder]
+      properties:
+        individualId:
+          type: string
+          format: uuid
+        xref:
+          type: string
+        givenName:
+          type: string
+          nullable: true
+        surname:
+          type: string
+          nullable: true
+        pedigree:
+          $ref: "#/components/schemas/Pedigree"
+        sortOrder:
+          type: integer
+
+    CreateFamilyEventRequest:
+      type: object
+      required: [tag]
+      properties:
+        tag:
+          type: string
+          example: MARR
+          enum: [MARR, DIV, ANUL, EVEN]
+        eventType:
+          type: string
+        dateText:
+          type: string
+        dateSort:
+          type: string
+          format: date
+        placeName:
+          type: string
+        description:
+          type: string
+
+    FamilyEventResponse:
+      type: object
+      required: [id, tag]
+      properties:
+        id:
+          type: string
+          format: uuid
+        tag:
+          type: string
+        eventType:
+          type: string
+          nullable: true
+        dateText:
+          type: string
+          nullable: true
+        dateSort:
+          type: string
+          format: date
+          nullable: true
+        placeName:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+
+    FamilyResponse:
+      type: object
+      required: [id, xref]
+      properties:
+        id:
+          type: string
+          format: uuid
+        xref:
+          type: string
+          example: F1
+        spouses:
+          type: array
+          items:
+            $ref: "#/components/schemas/SpouseResponse"
+        children:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChildResponse"
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/FamilyEventResponse"

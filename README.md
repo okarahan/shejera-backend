@@ -41,6 +41,25 @@ curl http://localhost:8080/health
 curl http://localhost:8080/ready
 ```
 
+## OpenAPI
+
+Die API ist als **OpenAPI 3.0** spezifiziert:
+
+- Datei: [`src/main/resources/openapi/openapi.yaml`](src/main/resources/openapi/openapi.yaml)
+- Laufend: `http://localhost:8080/openapi.yaml`
+
+Fürs Frontend (TypeScript-Client generieren):
+
+```bash
+# Beispiel mit openapi-generator-cli (nach npm install -g @openapitools/openapi-generator-cli)
+openapi-generator-cli generate \
+  -i http://localhost:8080/openapi.yaml \
+  -g typescript-fetch \
+  -o ../shejera-frontend/src/api/generated
+```
+
+Oder die YAML-Datei direkt aus dem Repo importieren (Swagger UI, Postman, Insomnia).
+
 ## jOOQ Codegen
 
 Nach dem Anlegen von Flyway-Migrationen (Tabellen in der DB):
