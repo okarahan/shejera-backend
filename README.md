@@ -21,15 +21,19 @@ Frontend: [shejera-frontend](https://github.com/okarahan/shejera-frontend)
 
 ## Lokal
 
-PostgreSQL starten:
+Mit [Task](https://taskfile.dev):
+
+```bash
+task db      # Nur PostgreSQL
+task run     # PostgreSQL + ./gradlew run (für Frontend-Dev)
+task docker  # PostgreSQL + Backend-Container
+task db:stop # PostgreSQL stoppen
+```
+
+Manuell:
 
 ```bash
 docker compose up -d
-```
-
-App starten:
-
-```bash
 ./gradlew run
 ```
 

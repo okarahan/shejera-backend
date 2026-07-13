@@ -1,0 +1,36 @@
+version: "3"
+
+vars:
+  COMPOSE: docker compose
+
+tasks:
+  db:
+    desc: Start PostgreSQL (Docker Compose)
+    cmds:
+      - "{{.COMPOSE}} up -d"
+      - "{{.COMPOSE}} ps"
+
+  db:stop:
+    desc: Stop PostgreSQL
+    cmds:
+      - "{{.COMPOSE}} down"
+
+  run:
+    desc: Start backend locally with Gradle (starts Postgres if needed)
+    deps: [db]
+    cmds:
+      - |
+        source "$HOME/.sdkman/bin/sdkman-init.sh" 2>/dev/null || true
+        ./gradlew run --no-daemon
+
+  docker:
+    desc: Start Postgres + backend in Docker
+    deps: [db]
+    cmds:
+      - docker build -t shejera-backend .
+      - |
+        docker run --rm -p 8080:8080 \
+          -e DATABASE_JDBC_URL=jdbc:postgresql://host.docker.internal:5432/shejera \
+          -e DATABASE_USER=shejera \
+          -e DATABASE_PASSWORD=shejera \
+          shejera-backend
