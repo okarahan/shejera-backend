@@ -79,6 +79,11 @@ jooq {
     }
 }
 
+tasks.named("compileKotlin") {
+    dependsOn("jooqCodegen")
+}
+
 tasks.test {
+    dependsOn("jooqCodegen")
     useJUnitPlatform()
 }
