@@ -30,3 +30,20 @@ data class IndividualResponse(
     val surname: String? = null,
     val biography: String? = null,
 )
+
+@Serializable
+data class RelatedIndividual(
+    val individualId: String,
+    val xref: String,
+    val givenName: String? = null,
+    val surname: String? = null,
+    val familyId: String,
+    val role: String? = null,
+)
+
+@Serializable
+data class IndividualRelationshipsResponse(
+    val spouses: List<RelatedIndividual> = emptyList(),
+    val children: List<RelatedIndividual> = emptyList(),
+    val parents: List<RelatedIndividual> = emptyList(),
+)

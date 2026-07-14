@@ -145,10 +145,38 @@ paths:
     delete:
       tags: [individuals]
       summary: Delete an individual
+      description: |
+        Removes the individual. Spouse and parent (as child) links are removed
+        automatically via database cascade.
+
+        Returns 409 if the individual still has children as a parent — delete
+        children first.
       operationId: deleteIndividual
       responses:
         "204":
           description: Deleted
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /individuals/{id}/relationships:
+    parameters:
+      - $ref: "#/components/parameters/UuidPathId"
+    get:
+      tags: [individuals]
+      summary: List relationships for an individual
+      description: |
+        Returns spouses, children, and parents linked via family records.
+        The client decides how to interpret this data (e.g. delete rules).
+      operationId: getIndividualRelationships
+      responses:
+        "200":
+          description: Relationships
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IndividualRelationshipsResponse"
         "404":
           $ref: "#/components/responses/NotFound"
 
@@ -424,6 +452,46 @@ components:
         biography:
           type: string
           nullable: true
+
+    RelatedIndividual:
+      type: object
+      required: [individualId, xref, familyId]
+      properties:
+        individualId:
+          type: string
+          format: uuid
+        xref:
+          type: string
+          example: I2
+        givenName:
+          type: string
+          nullable: true
+        surname:
+          type: string
+          nullable: true
+        familyId:
+          type: string
+          format: uuid
+        role:
+          type: string
+          description: Spouse role (HUSB/WIFE) when applicable
+          nullable: true
+
+    IndividualRelationshipsResponse:
+      type: object
+      properties:
+        spouses:
+          type: array
+          items:
+            $ref: "#/components/schemas/RelatedIndividual"
+        children:
+          type: array
+          items:
+            $ref: "#/components/schemas/RelatedIndividual"
+        parents:
+          type: array
+          items:
+            $ref: "#/components/schemas/RelatedIndividual"
 
     CreateIndividualEventRequest:
       type: object

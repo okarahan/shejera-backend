@@ -1,14 +1,18 @@
 package com.shejera.services
 
 import com.shejera.api.BadRequestException
+import com.shejera.api.ConflictException
 import com.shejera.api.NotFoundException
 import com.shejera.db.generated.tables.records.IndividualRecord
 import com.shejera.models.CreateIndividualEventRequest
 import com.shejera.models.CreateIndividualRequest
 import com.shejera.models.IndividualEventResponse
+import com.shejera.models.IndividualRelationshipsResponse
 import com.shejera.models.IndividualResponse
+import com.shejera.models.RelatedIndividual
 import com.shejera.models.UpdateIndividualRequest
 import com.shejera.repositories.EventRepository
+import com.shejera.repositories.FamilyRepository
 import com.shejera.repositories.IndividualRepository
 import com.shejera.repositories.PlaceRepository
 import com.shejera.repositories.TreeRepository
@@ -21,6 +25,7 @@ class IndividualService(
     private val dsl: DSLContext,
     private val treeRepository: TreeRepository,
     private val individualRepository: IndividualRepository,
+    private val familyRepository: FamilyRepository,
     private val eventRepository: EventRepository,
     private val placeRepository: PlaceRepository,
 ) {
@@ -120,10 +125,85 @@ class IndividualService(
         return get(id)
     }
 
+    fun getRelationships(id: UUID): IndividualRelationshipsResponse {
+        val treeId = treeRepository.getDefaultTreeId()
+        individualRepository.findByIdAndTree(id, treeId)
+            ?: throw NotFoundException("Individual not found: $id")
+
+        val spouses = mutableListOf<RelatedIndividual>()
+        val children = mutableListOf<RelatedIndividual>()
+        val childIds = mutableSetOf<UUID>()
+
+        for (familyId in familyRepository.listFamilyIdsAsSpouse(id, treeId)) {
+            for (spouse in familyRepository.listSpouses(familyId)) {
+                if (spouse.individualId != id) {
+                    spouses.add(
+                        RelatedIndividual(
+                            individualId = spouse.individualId.toString(),
+                            xref = spouse.xref,
+                            givenName = spouse.givenName,
+                            surname = spouse.surname,
+                            familyId = familyId.toString(),
+                            role = spouse.role,
+                        ),
+                    )
+                }
+            }
+            for (child in familyRepository.listChildren(familyId)) {
+                if (childIds.add(child.individualId)) {
+                    children.add(
+                        RelatedIndividual(
+                            individualId = child.individualId.toString(),
+                            xref = child.xref,
+                            givenName = child.givenName,
+                            surname = child.surname,
+                            familyId = familyId.toString(),
+                            role = null,
+                        ),
+                    )
+                }
+            }
+        }
+
+        val parents = mutableListOf<RelatedIndividual>()
+        val parentFamilyId = familyRepository.findFamilyIdAsChild(id, treeId)
+        if (parentFamilyId != null) {
+            for (spouse in familyRepository.listSpouses(parentFamilyId)) {
+                parents.add(
+                    RelatedIndividual(
+                        individualId = spouse.individualId.toString(),
+                        xref = spouse.xref,
+                        givenName = spouse.givenName,
+                        surname = spouse.surname,
+                        familyId = parentFamilyId.toString(),
+                        role = spouse.role,
+                    ),
+                )
+            }
+        }
+
+        return IndividualRelationshipsResponse(
+            spouses = spouses,
+            children = children,
+            parents = parents,
+        )
+    }
+
     fun delete(id: UUID) {
         val treeId = treeRepository.getDefaultTreeId()
         individualRepository.findByIdAndTree(id, treeId)
             ?: throw NotFoundException("Individual not found: $id")
+
+        val relationships = getRelationships(id)
+        if (relationships.children.isNotEmpty()) {
+            val names =
+                relationships.children.joinToString(", ") { related ->
+                    formatName(related.givenName, related.surname, related.xref)
+                }
+            throw ConflictException(
+                "Individual has children and cannot be deleted. Delete children first: $names",
+            )
+        }
 
         if (!individualRepository.delete(id)) {
             throw NotFoundException("Individual not found: $id")
@@ -221,5 +301,12 @@ class IndividualService(
 
     companion object {
         private val VALID_SEX = setOf("M", "F", "X", "U")
+
+        private fun formatName(
+            givenName: String?,
+            surname: String?,
+            xref: String,
+        ): String =
+            listOfNotNull(givenName, surname).joinToString(" ").ifBlank { xref }
     }
 }

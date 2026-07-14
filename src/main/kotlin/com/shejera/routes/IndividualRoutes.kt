@@ -45,6 +45,11 @@ fun Route.individualRoutes(individualService: IndividualService) {
             call.respond(HttpStatusCode.NoContent)
         }
 
+        get("/{id}/relationships") {
+            val id = parseUuid(call.parameters["id"])
+            call.respond(individualService.getRelationships(id))
+        }
+
         get("/{id}/events") {
             val id = parseUuid(call.parameters["id"])
             call.respond(individualService.listEvents(id))

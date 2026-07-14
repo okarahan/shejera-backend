@@ -28,6 +28,7 @@ fun Application.configureRouting() {
             dsl = dsl,
             treeRepository = treeRepository,
             individualRepository = individualRepository,
+            familyRepository = familyRepository,
             eventRepository = eventRepository,
             placeRepository = placeRepository,
         )

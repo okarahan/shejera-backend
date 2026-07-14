@@ -103,6 +103,30 @@ class FamilyRepository(
             .orderBy(FAMILY.XREF.asc())
             .fetch()
 
+    fun listFamilyIdsAsSpouse(
+        individualId: UUID,
+        treeId: UUID,
+    ): List<UUID> =
+        dsl.select(FAMILY_SPOUSE.FAMILY_ID)
+            .from(FAMILY_SPOUSE)
+            .join(FAMILY).on(FAMILY.ID.eq(FAMILY_SPOUSE.FAMILY_ID))
+            .where(FAMILY_SPOUSE.INDIVIDUAL_ID.eq(individualId))
+            .and(FAMILY.TREE_ID.eq(treeId))
+            .orderBy(FAMILY.XREF.asc())
+            .fetch(FAMILY_SPOUSE.FAMILY_ID)
+            .filterNotNull()
+
+    fun findFamilyIdAsChild(
+        individualId: UUID,
+        treeId: UUID,
+    ): UUID? =
+        dsl.select(FAMILY_CHILD.FAMILY_ID)
+            .from(FAMILY_CHILD)
+            .join(FAMILY).on(FAMILY.ID.eq(FAMILY_CHILD.FAMILY_ID))
+            .where(FAMILY_CHILD.INDIVIDUAL_ID.eq(individualId))
+            .and(FAMILY.TREE_ID.eq(treeId))
+            .fetchOne(FAMILY_CHILD.FAMILY_ID)
+
     fun delete(id: UUID): Boolean =
         dsl.deleteFrom(FAMILY)
             .where(FAMILY.ID.eq(id))
