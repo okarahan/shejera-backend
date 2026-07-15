@@ -415,6 +415,14 @@ components:
           type: string
           description: Stored as GEDCOM NOTE linked to the individual
           example: Carpenter in Berlin.
+        birthDate:
+          type: string
+          description: Birth date as DD.MM.YYYY or year only (YYYY)
+          example: 15.03.1842
+        deathDate:
+          type: string
+          description: Death date as DD.MM.YYYY or year only (YYYY). Sets isLiving to false when provided.
+          example: 1945
 
     UpdateIndividualRequest:
       type: object
@@ -429,6 +437,14 @@ components:
           type: string
         biography:
           type: string
+        birthDate:
+          type: string
+          description: Birth date as DD.MM.YYYY or year only (YYYY). Send empty string to clear.
+          example: 1842
+        deathDate:
+          type: string
+          description: Death date as DD.MM.YYYY or year only (YYYY). Send empty string to clear. Sets isLiving to false when provided.
+          example: 1945
 
     IndividualResponse:
       type: object
@@ -452,6 +468,14 @@ components:
         biography:
           type: string
           nullable: true
+        birthDate:
+          type: string
+          nullable: true
+          example: 15.03.1842
+        deathDate:
+          type: string
+          nullable: true
+          example: 1945
 
     RelatedIndividual:
       type: object

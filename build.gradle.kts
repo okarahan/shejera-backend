@@ -3,6 +3,7 @@ plugins {
     kotlin("plugin.serialization") version "2.3.21"
     id("io.ktor.plugin") version "3.5.1"
     id("org.jooq.jooq-codegen-gradle") version "3.21.6"
+    id("org.flywaydb.flyway") version "11.8.0"
 }
 
 group = "com.shejera"
@@ -77,6 +78,17 @@ jooq {
             }
         }
     }
+}
+
+flyway {
+    url = findProperty("jooq.url")?.toString() ?: "jdbc:postgresql://localhost:5432/shejera"
+    user = findProperty("jooq.user")?.toString() ?: "shejera"
+    password = findProperty("jooq.password")?.toString() ?: "shejera"
+    locations = arrayOf("filesystem:src/main/resources/db/migration")
+}
+
+tasks.named("jooqCodegen") {
+    dependsOn("flywayMigrate")
 }
 
 tasks.named("compileKotlin") {

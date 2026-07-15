@@ -4,6 +4,7 @@ import com.shejera.api.BadRequestException
 import com.shejera.api.ConflictException
 import com.shejera.api.NotFoundException
 import com.shejera.db.generated.tables.records.IndividualRecord
+import com.shejera.gedcom.GedcomTags
 import com.shejera.models.CreateIndividualEventRequest
 import com.shejera.models.CreateIndividualRequest
 import com.shejera.models.IndividualEventResponse
@@ -61,7 +62,12 @@ class IndividualService(
                         treeId = treeId,
                         xref = xref,
                         sex = request.sex,
-                        isLiving = request.isLiving,
+                        isLiving =
+                            if (!request.deathDate.isNullOrBlank()) {
+                                false
+                            } else {
+                                request.isLiving
+                            },
                     )
 
                 txRepo.insertName(
@@ -72,6 +78,14 @@ class IndividualService(
 
                 if (!request.biography.isNullOrBlank()) {
                     txRepo.insertBiographyNote(treeId, created.id!!, request.biography)
+                }
+
+                if (!request.birthDate.isNullOrBlank()) {
+                    upsertBirthEvent(txDsl, created.id!!, request.birthDate)
+                }
+
+                if (!request.deathDate.isNullOrBlank()) {
+                    upsertDeathEvent(txDsl, created.id!!, request.deathDate)
                 }
 
                 created
@@ -94,14 +108,7 @@ class IndividualService(
         dsl.transaction { ctx ->
             val txDsl = ctx.dsl()
             val txRepo = IndividualRepository(txDsl)
-
-            if (request.sex != null || request.isLiving != null) {
-                txRepo.update(
-                    id = id,
-                    sex = request.sex ?: existing.sex,
-                    isLiving = request.isLiving ?: existing.isLiving!!,
-                )
-            }
+            var resolvedIsLiving = request.isLiving ?: existing.isLiving!!
 
             if (request.givenName != null || request.surname != null) {
                 val currentName = individualRepository.findPreferredName(id)
@@ -119,6 +126,25 @@ class IndividualService(
                 } else if (request.biography.isNotBlank()) {
                     txRepo.insertBiographyNote(treeId, id, request.biography)
                 }
+            }
+
+            if (request.birthDate != null) {
+                upsertBirthEvent(txDsl, id, request.birthDate)
+            }
+
+            if (request.deathDate != null) {
+                upsertDeathEvent(txDsl, id, request.deathDate)
+                if (request.deathDate.isNotBlank()) {
+                    resolvedIsLiving = false
+                }
+            }
+
+            if (request.sex != null || request.isLiving != null || request.deathDate != null) {
+                txRepo.update(
+                    id = id,
+                    sex = request.sex ?: existing.sex,
+                    isLiving = resolvedIsLiving,
+                )
             }
         }
 
@@ -271,6 +297,8 @@ class IndividualService(
     private fun toResponse(individual: IndividualRecord): IndividualResponse {
         val name = individualRepository.findPreferredName(individual.id!!)
         val biography = individualRepository.findBiographyNote(individual.id!!)?.text
+        val birthDate = eventRepository.findBirthEvent(individual.id!!)?.dateText
+        val deathDate = eventRepository.findDeathEvent(individual.id!!)?.dateText
 
         return IndividualResponse(
             id = individual.id.toString(),
@@ -280,7 +308,97 @@ class IndividualService(
             givenName = name?.givenName,
             surname = name?.surname,
             biography = biography,
+            birthDate = birthDate,
+            deathDate = deathDate,
         )
+    }
+
+    private fun upsertDeathEvent(
+        dsl: DSLContext,
+        individualId: UUID,
+        deathDate: String,
+    ) {
+        val eventRepo = EventRepository(dsl)
+        val existing = eventRepo.findDeathEvent(individualId)
+
+        if (deathDate.isBlank()) {
+            if (existing != null) {
+                eventRepo.deleteIndividualEvent(existing.id)
+            }
+            return
+        }
+
+        val (dateText, dateSort) = parsePersonDate(deathDate, "deathDate")
+
+        if (existing != null) {
+            eventRepo.updateIndividualEvent(existing.id, dateText, dateSort)
+        } else {
+            eventRepo.insertIndividualEvent(
+                individualId = individualId,
+                tag = GedcomTags.DEAT,
+                eventType = null,
+                dateText = dateText,
+                dateSort = dateSort,
+                placeId = null,
+                description = null,
+            )
+        }
+    }
+
+    private fun upsertBirthEvent(
+        dsl: DSLContext,
+        individualId: UUID,
+        birthDate: String,
+    ) {
+        val eventRepo = EventRepository(dsl)
+        val existing = eventRepo.findBirthEvent(individualId)
+
+        if (birthDate.isBlank()) {
+            if (existing != null) {
+                eventRepo.deleteIndividualEvent(existing.id)
+            }
+            return
+        }
+
+        val (dateText, dateSort) = parsePersonDate(birthDate, "birthDate")
+
+        if (existing != null) {
+            eventRepo.updateIndividualEvent(existing.id, dateText, dateSort)
+        } else {
+            eventRepo.insertIndividualEvent(
+                individualId = individualId,
+                tag = GedcomTags.BIRT,
+                eventType = null,
+                dateText = dateText,
+                dateSort = dateSort,
+                placeId = null,
+                description = null,
+            )
+        }
+    }
+
+    private fun parsePersonDate(value: String, fieldName: String): Pair<String, LocalDate?> {
+        val trimmed = value.trim()
+        if (YEAR_ONLY.matches(trimmed)) {
+            val year = trimmed.toInt()
+            if (year !in 1..9999) {
+                throw BadRequestException("$fieldName year must be between 1 and 9999")
+            }
+            return trimmed to null
+        }
+
+        val match = DAY_MONTH_YEAR.matchEntire(trimmed)
+            ?: throw BadRequestException("$fieldName must be DD.MM.YYYY or YYYY")
+
+        val day = match.groupValues[1].toInt()
+        val month = match.groupValues[2].toInt()
+        val year = match.groupValues[3].toInt()
+
+        return try {
+            trimmed to LocalDate.of(year, month, day)
+        } catch (_: DateTimeParseException) {
+            throw BadRequestException("$fieldName is not a valid calendar date")
+        }
     }
 
     private fun validateSex(sex: String?) {
@@ -301,6 +419,8 @@ class IndividualService(
 
     companion object {
         private val VALID_SEX = setOf("M", "F", "X", "U")
+        private val YEAR_ONLY = Regex("^\\d{4}$")
+        private val DAY_MONTH_YEAR = Regex("^(\\d{2})\\.(\\d{2})\\.(\\d{4})$")
 
         private fun formatName(
             givenName: String?,

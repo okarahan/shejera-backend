@@ -32,6 +32,57 @@ class EventRepository(
             .returning()
             .fetchOne()!!
 
+    fun findDeathEvent(individualId: UUID): IndividualEventRow? =
+        findEventByTag(individualId, "DEAT")
+
+    fun findBirthEvent(individualId: UUID): IndividualEventRow? =
+        findEventByTag(individualId, "BIRT")
+
+    private fun findEventByTag(individualId: UUID, tag: String): IndividualEventRow? =
+        dsl.select(
+            INDIVIDUAL_EVENT.ID,
+            INDIVIDUAL_EVENT.TAG,
+            INDIVIDUAL_EVENT.EVENT_TYPE,
+            INDIVIDUAL_EVENT.DATE_TEXT,
+            INDIVIDUAL_EVENT.DATE_SORT,
+            INDIVIDUAL_EVENT.DESCRIPTION,
+            PLACE.NAME,
+        )
+            .from(INDIVIDUAL_EVENT)
+            .leftJoin(PLACE).on(PLACE.ID.eq(INDIVIDUAL_EVENT.PLACE_ID))
+            .where(INDIVIDUAL_EVENT.INDIVIDUAL_ID.eq(individualId))
+            .and(INDIVIDUAL_EVENT.TAG.eq(tag))
+            .orderBy(INDIVIDUAL_EVENT.SORT_ORDER.asc(), INDIVIDUAL_EVENT.ID.asc())
+            .limit(1)
+            .fetchOne { record ->
+                IndividualEventRow(
+                    id = record.get(INDIVIDUAL_EVENT.ID)!!,
+                    tag = record.get(INDIVIDUAL_EVENT.TAG)!!,
+                    eventType = record.get(INDIVIDUAL_EVENT.EVENT_TYPE),
+                    dateText = record.get(INDIVIDUAL_EVENT.DATE_TEXT),
+                    dateSort = record.get(INDIVIDUAL_EVENT.DATE_SORT),
+                    placeName = record.get(PLACE.NAME),
+                    description = record.get(INDIVIDUAL_EVENT.DESCRIPTION),
+                )
+            }
+
+    fun updateIndividualEvent(
+        id: UUID,
+        dateText: String?,
+        dateSort: LocalDate?,
+    ): IndividualEventRecord =
+        dsl.update(INDIVIDUAL_EVENT)
+            .set(INDIVIDUAL_EVENT.DATE_TEXT, dateText)
+            .set(INDIVIDUAL_EVENT.DATE_SORT, dateSort)
+            .where(INDIVIDUAL_EVENT.ID.eq(id))
+            .returning()
+            .fetchOne()!!
+
+    fun deleteIndividualEvent(id: UUID): Boolean =
+        dsl.deleteFrom(INDIVIDUAL_EVENT)
+            .where(INDIVIDUAL_EVENT.ID.eq(id))
+            .execute() > 0
+
     fun listIndividualEvents(individualId: UUID): List<IndividualEventRow> =
         dsl.select(
             INDIVIDUAL_EVENT.ID,

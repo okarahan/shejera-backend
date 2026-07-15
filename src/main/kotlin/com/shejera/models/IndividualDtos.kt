@@ -9,6 +9,8 @@ data class CreateIndividualRequest(
     val sex: String? = null,
     val isLiving: Boolean = true,
     val biography: String? = null,
+    val birthDate: String? = null,
+    val deathDate: String? = null,
 )
 
 @Serializable
@@ -18,6 +20,8 @@ data class UpdateIndividualRequest(
     val givenName: String? = null,
     val surname: String? = null,
     val biography: String? = null,
+    val birthDate: String? = null,
+    val deathDate: String? = null,
 )
 
 @Serializable
@@ -29,6 +33,8 @@ data class IndividualResponse(
     val givenName: String? = null,
     val surname: String? = null,
     val biography: String? = null,
+    val birthDate: String? = null,
+    val deathDate: String? = null,
 )
 
 @Serializable
