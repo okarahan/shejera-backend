@@ -42,6 +42,8 @@ jobs:
             -Pjooq.url=jdbc:postgresql://localhost:5432/shejera \
             -Pjooq.user=shejera \
             -Pjooq.password=shejera
+          mkdir -p dist
+          cp build/libs/*-all.jar dist/app.jar
 
       - uses: docker/login-action@v3
         with:
