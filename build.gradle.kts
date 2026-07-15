@@ -1,3 +1,6 @@
+import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+import org.gradle.api.file.DuplicatesStrategy
+
 buildscript {
     repositories {
         mavenCentral()
@@ -107,4 +110,9 @@ tasks.named("compileKotlin") {
 tasks.test {
     dependsOn("jooqCodegen")
     useJUnitPlatform()
+}
+
+tasks.named<ShadowJar>("shadowJar") {
+    mergeServiceFiles()
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE
 }
