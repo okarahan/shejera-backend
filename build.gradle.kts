@@ -1,5 +1,7 @@
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 import org.gradle.api.file.DuplicatesStrategy
+import java.net.URI
+import java.io.InputStream
 
 buildscript {
     repositories {
@@ -53,10 +55,35 @@ dependencies {
 
     implementation("ch.qos.logback:logback-classic:$logbackVersion")
 
+    implementation("org.openpnp:opencv:4.9.0-0")
+    // Bundled native Tesseract + Leptonica (no system brew install required)
+    implementation("org.bytedeco:tesseract-platform:5.5.0-1.5.11")
+
     jooqCodegen("org.postgresql:postgresql:$postgresVersion")
 
     testImplementation("io.ktor:ktor-server-test-host:$ktorVersion")
     testImplementation(kotlin("test"))
+}
+
+val generatedTessdata = layout.buildDirectory.dir("generated-tessdata")
+val tessdataLanguages = listOf("eng", "tur")
+
+tasks.register("downloadTessdata") {
+    description = "Download embedded Tesseract language models (tessdata_fast)"
+    val outputDir = generatedTessdata.map { it.dir("tessdata").asFile }
+    outputs.dir(generatedTessdata)
+    doLast {
+        val dir = outputDir.get()
+        dir.mkdirs()
+        val base = "https://github.com/tesseract-ocr/tessdata_fast/raw/main"
+        for (lang in tessdataLanguages) {
+            val target = dir.resolve("$lang.traineddata")
+            if (target.exists() && target.length() > 0L) continue
+            URI.create("$base/$lang.traineddata").toURL().openStream().use { input: InputStream ->
+                target.outputStream().use { output -> input.copyTo(output) }
+            }
+        }
+    }
 }
 
 kotlin {
@@ -66,9 +93,13 @@ kotlin {
 sourceSets {
     main {
         kotlin.srcDir("build/generated-src/jooq/main")
+        resources.srcDir(generatedTessdata)
     }
 }
 
+tasks.named("processResources") {
+    dependsOn("downloadTessdata")
+}
 jooq {
     configuration {
         jdbc {

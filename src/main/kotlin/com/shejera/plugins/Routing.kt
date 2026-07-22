@@ -1,5 +1,6 @@
 package com.shejera.plugins
 
+import com.shejera.importing.createImageRecognizerSetup
 import com.shejera.repositories.EventRepository
 import com.shejera.repositories.FamilyRepository
 import com.shejera.repositories.IndividualRepository
@@ -7,9 +8,11 @@ import com.shejera.repositories.PlaceRepository
 import com.shejera.repositories.TreeRepository
 import com.shejera.routes.familyRoutes
 import com.shejera.routes.healthRoutes
+import com.shejera.routes.importRoutes
 import com.shejera.routes.individualRoutes
 import com.shejera.routes.openApiRoutes
 import com.shejera.services.FamilyService
+import com.shejera.services.ImportService
 import com.shejera.services.IndividualService
 import io.ktor.server.application.Application
 import io.ktor.server.routing.routing
@@ -42,10 +45,18 @@ fun Application.configureRouting() {
             placeRepository = placeRepository,
         )
 
+    val recognizerSetup = createImageRecognizerSetup()
+    val importService =
+        ImportService(
+            imageRecognizer = recognizerSetup.recognizer,
+            recognizerMode = recognizerSetup.mode,
+        )
+
     routing {
         healthRoutes()
         openApiRoutes()
         individualRoutes(individualService)
         familyRoutes(familyService)
+        importRoutes(importService)
     }
 }
