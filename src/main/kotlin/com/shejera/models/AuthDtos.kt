@@ -1,0 +1,86 @@
+package com.shejera.models
+
+import kotlinx.serialization.Serializable
+
+@Serializable
+data class MeResponse(
+    val id: String,
+    val email: String,
+    val displayName: String,
+    val role: String,
+    val canManageInvites: Boolean,
+    val canWriteMainTree: Boolean,
+    val contributionTreeId: String? = null,
+    val contributionTreeStatus: String? = null,
+)
+
+@Serializable
+data class InvitePreviewResponse(
+    val email: String,
+    val displayName: String,
+    val role: String,
+    val status: String,
+    val expired: Boolean,
+)
+
+@Serializable
+data class RedeemInviteRequest(
+    val token: String,
+)
+
+@Serializable
+data class CreateInviteRequest(
+    val email: String,
+    val displayName: String,
+    val role: String = "contributor",
+    val expiresInDays: Int? = 30,
+)
+
+@Serializable
+data class InviteResponse(
+    val id: String,
+    val email: String,
+    val displayName: String,
+    val role: String,
+    val status: String,
+    val token: String? = null,
+    val invitePath: String? = null,
+    /** Absolute invite URL when SHEJERA_INVITE_ORIGIN is set (e.g. http://shejera.o.karahan.de/import/...). */
+    val inviteUrl: String? = null,
+    val expiresAt: String? = null,
+    val createdAt: String,
+    val redeemedAt: String? = null,
+)
+
+@Serializable
+data class TreeResponse(
+    val id: String,
+    val name: String,
+    val kind: String,
+    val status: String? = null,
+    val expiresAt: String? = null,
+    val canWrite: Boolean,
+    val contributorUserId: String? = null,
+    val createdAt: String,
+)
+
+@Serializable
+data class CreateContributionTreeRequest(
+    val name: String,
+    val expiresInDays: Int? = 30,
+)
+
+@Serializable
+data class ImportCommitResponse(
+    val treeId: String,
+    val personCount: Int,
+    val familyCount: Int,
+)
+
+
+@Serializable
+data class ImportCommitRequest(
+    val treeName: String? = null,
+    val expiresInDays: Int? = 30,
+    val treeId: String? = null,
+)

@@ -27,6 +27,7 @@ class ImportService(
     }
 
     fun upload(
+        userId: UUID,
         originalFileName: String,
         contentType: String?,
         bytes: ByteArray,
@@ -38,7 +39,7 @@ class ImportService(
             throw BadRequestException("Only image uploads are allowed (jpg, png, webp, gif)")
         }
 
-        clearPreviousUpload()
+        clearPreviousUpload(userId)
 
         val extension = extensionOf(originalFileName) ?: "bin"
         val storedName = "${UUID.randomUUID()}.$extension"
@@ -52,6 +53,7 @@ class ImportService(
 
         val uploadedAt = Instant.now()
         ImportSessionStore.set(
+            userId,
             ImportSession(
                 imagePath = target,
                 originalFileName = originalFileName,
@@ -79,8 +81,8 @@ class ImportService(
         )
     }
 
-    fun status(): ImportStatusResponse {
-        val session = ImportSessionStore.current
+    fun status(userId: UUID): ImportStatusResponse {
+        val session = ImportSessionStore.get(userId)
         return ImportStatusResponse(
             hasUpload = session != null,
             originalFileName = session?.originalFileName,
@@ -93,9 +95,9 @@ class ImportService(
         )
     }
 
-    fun scan(): ImportScanResponse {
+    fun scan(userId: UUID): ImportScanResponse {
         val session =
-            ImportSessionStore.current
+            ImportSessionStore.get(userId)
                 ?: throw BadRequestException("No uploaded image. Upload an image first.")
 
         if (!Files.exists(session.imagePath)) {
@@ -114,7 +116,7 @@ class ImportService(
         val tree = imageRecognizer.recognize(session.imagePath)
         val scannedAt = Instant.now()
 
-        ImportSessionStore.update { current ->
+        ImportSessionStore.update(userId) { current ->
             current.copy(recognizedTree = tree, scannedAt = scannedAt)
         }
 
@@ -134,17 +136,17 @@ class ImportService(
         )
     }
 
-    fun preview(): RecognizedTree {
+    fun preview(userId: UUID): RecognizedTree {
         val session =
-            ImportSessionStore.current
+            ImportSessionStore.get(userId)
                 ?: throw NotFoundException("No import session. Upload and scan an image first.")
         return session.recognizedTree
             ?: throw BadRequestException("No scan result yet. Run scan first.")
     }
 
-    private fun clearPreviousUpload() {
-        val previous = ImportSessionStore.current
-        ImportSessionStore.clear()
+    private fun clearPreviousUpload(userId: UUID) {
+        val previous = ImportSessionStore.get(userId)
+        ImportSessionStore.clear(userId)
         if (previous != null) {
             runCatching { Files.deleteIfExists(previous.imagePath) }
         }

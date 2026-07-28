@@ -30,26 +30,23 @@ class IndividualService(
     private val eventRepository: EventRepository,
     private val placeRepository: PlaceRepository,
 ) {
-    fun list(): List<IndividualResponse> {
-        val treeId = treeRepository.getDefaultTreeId()
+    fun list(treeId: UUID): List<IndividualResponse> {
         return individualRepository.listByTree(treeId).map { toResponse(it) }
     }
 
-    fun get(id: UUID): IndividualResponse {
-        val treeId = treeRepository.getDefaultTreeId()
+    fun get(id: UUID, treeId: UUID): IndividualResponse {
         val individual =
             individualRepository.findByIdAndTree(id, treeId)
                 ?: throw NotFoundException("Individual not found: $id")
         return toResponse(individual)
     }
 
-    fun create(request: CreateIndividualRequest): IndividualResponse {
+    fun create(request: CreateIndividualRequest, treeId: UUID): IndividualResponse {
         validateSex(request.sex)
         if (request.givenName.isBlank() && request.surname.isBlank()) {
             throw BadRequestException("givenName or surname is required")
         }
 
-        val treeId = treeRepository.getDefaultTreeId()
 
         val individual =
             dsl.transactionResult { ctx ->
@@ -97,10 +94,10 @@ class IndividualService(
     fun update(
         id: UUID,
         request: UpdateIndividualRequest,
+        treeId: UUID,
     ): IndividualResponse {
         validateSex(request.sex)
 
-        val treeId = treeRepository.getDefaultTreeId()
         val existing =
             individualRepository.findByIdAndTree(id, treeId)
                 ?: throw NotFoundException("Individual not found: $id")
@@ -148,11 +145,10 @@ class IndividualService(
             }
         }
 
-        return get(id)
+        return get(id, treeId)
     }
 
-    fun getRelationships(id: UUID): IndividualRelationshipsResponse {
-        val treeId = treeRepository.getDefaultTreeId()
+    fun getRelationships(id: UUID, treeId: UUID): IndividualRelationshipsResponse {
         individualRepository.findByIdAndTree(id, treeId)
             ?: throw NotFoundException("Individual not found: $id")
 
@@ -215,12 +211,11 @@ class IndividualService(
         )
     }
 
-    fun delete(id: UUID) {
-        val treeId = treeRepository.getDefaultTreeId()
+    fun delete(id: UUID, treeId: UUID) {
         individualRepository.findByIdAndTree(id, treeId)
             ?: throw NotFoundException("Individual not found: $id")
 
-        val relationships = getRelationships(id)
+        val relationships = getRelationships(id, treeId)
         if (relationships.children.isNotEmpty()) {
             val names =
                 relationships.children.joinToString(", ") { related ->
@@ -239,8 +234,8 @@ class IndividualService(
     fun addEvent(
         id: UUID,
         request: CreateIndividualEventRequest,
+        treeId: UUID,
     ): IndividualEventResponse {
-        val treeId = treeRepository.getDefaultTreeId()
         individualRepository.findByIdAndTree(id, treeId)
             ?: throw NotFoundException("Individual not found: $id")
 
@@ -276,8 +271,7 @@ class IndividualService(
         )
     }
 
-    fun listEvents(id: UUID): List<IndividualEventResponse> {
-        val treeId = treeRepository.getDefaultTreeId()
+    fun listEvents(id: UUID, treeId: UUID): List<IndividualEventResponse> {
         individualRepository.findByIdAndTree(id, treeId)
             ?: throw NotFoundException("Individual not found: $id")
 

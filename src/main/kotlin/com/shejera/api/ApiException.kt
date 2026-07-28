@@ -16,3 +16,11 @@ class BadRequestException(
 class ConflictException(
     message: String,
 ) : ApiException(409, message)
+
+class UnauthorizedException(
+    message: String = "Authentication required",
+) : ApiException(401, message)
+
+class ForbiddenException(
+    message: String = "Forbidden",
+) : ApiException(403, message)

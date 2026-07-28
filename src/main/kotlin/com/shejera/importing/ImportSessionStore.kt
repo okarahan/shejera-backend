@@ -1,27 +1,31 @@
 package com.shejera.importing
 
+import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
+
 /**
- * Single global in-memory import session.
- * Later this can be keyed by user/session.
+ * In-memory import sessions keyed by user id.
  */
 object ImportSessionStore {
-    @Volatile
-    var current: ImportSession? = null
-        private set
+    private val sessions = ConcurrentHashMap<UUID, ImportSession>()
 
-    @Synchronized
-    fun set(session: ImportSession) {
-        current = session
+    fun get(userId: UUID): ImportSession? = sessions[userId]
+
+    fun set(
+        userId: UUID,
+        session: ImportSession,
+    ) {
+        sessions[userId] = session
     }
 
-    @Synchronized
-    fun update(transform: (ImportSession) -> ImportSession) {
-        val existing = current ?: return
-        current = transform(existing)
+    fun update(
+        userId: UUID,
+        transform: (ImportSession) -> ImportSession,
+    ) {
+        sessions.computeIfPresent(userId) { _, current -> transform(current) }
     }
 
-    @Synchronized
-    fun clear() {
-        current = null
+    fun clear(userId: UUID) {
+        sessions.remove(userId)
     }
 }

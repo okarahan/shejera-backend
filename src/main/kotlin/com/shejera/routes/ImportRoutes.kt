@@ -1,10 +1,13 @@
 package com.shejera.routes
 
 import com.shejera.api.BadRequestException
+import com.shejera.models.ImportCommitRequest
+import com.shejera.services.ImportCommitService
 import com.shejera.services.ImportService
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.content.PartData
 import io.ktor.http.content.forEachPart
+import io.ktor.server.request.receive
 import io.ktor.server.request.receiveMultipart
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
@@ -14,17 +17,23 @@ import io.ktor.server.routing.route
 import io.ktor.utils.io.readRemaining
 import kotlinx.io.readByteArray
 import org.slf4j.LoggerFactory
+import java.util.UUID
 
-fun Route.importRoutes(importService: ImportService) {
+fun Route.importRoutes(
+    importService: ImportService,
+    importCommitService: ImportCommitService,
+) {
     val log = LoggerFactory.getLogger("com.shejera.routes.ImportRoutes")
 
     route("/imports") {
         get("/status") {
-            call.respond(importService.status())
+            val principal = call.requirePrincipal()
+            call.respond(importService.status(principal.id))
         }
 
         post("/upload") {
-            log.info("[import] POST /imports/upload received")
+            val principal = call.requirePrincipal()
+            log.info("[import] POST /imports/upload user={}", principal.id)
             val multipart = call.receiveMultipart()
             var fileName: String? = null
             var contentType: String? = null
@@ -51,19 +60,40 @@ fun Route.importRoutes(importService: ImportService) {
             }
 
             val response =
-                importService.upload(resolvedFileName, contentType, resolvedBytes)
+                importService.upload(
+                    principal.id,
+                    resolvedFileName,
+                    contentType,
+                    resolvedBytes,
+                )
             call.respond(HttpStatusCode.Created, response)
         }
 
         post("/scan") {
-            log.info("[import] POST /imports/scan received")
-            call.respond(importService.scan())
-            log.info("[import] POST /imports/scan responded")
+            val principal = call.requirePrincipal()
+            log.info("[import] POST /imports/scan user={}", principal.id)
+            call.respond(importService.scan(principal.id))
         }
 
         get("/preview") {
-            log.info("[import] GET /imports/preview")
-            call.respond(importService.preview())
+            val principal = call.requirePrincipal()
+            call.respond(importService.preview(principal.id))
+        }
+
+        post("/commit") {
+            val principal = call.requirePrincipal()
+            val body =
+                runCatching { call.receive<ImportCommitRequest>() }
+                    .getOrElse { ImportCommitRequest() }
+            val treeId = body.treeId?.let { UUID.fromString(it) }
+            val response =
+                importCommitService.commit(
+                    principal = principal,
+                    treeName = body.treeName,
+                    expiresInDays = body.expiresInDays,
+                    targetTreeId = treeId,
+                )
+            call.respond(HttpStatusCode.Created, response)
         }
     }
 }

@@ -26,20 +26,18 @@ class FamilyService(
     private val familyRepository: FamilyRepository,
     private val placeRepository: PlaceRepository,
 ) {
-    fun list(): List<FamilyResponse> {
-        val treeId = treeRepository.getDefaultTreeId()
+    fun list(treeId: UUID): List<FamilyResponse> {
         return familyRepository.listByTree(treeId).map { toResponse(it) }
     }
 
-    fun get(id: UUID): FamilyResponse {
-        val treeId = treeRepository.getDefaultTreeId()
+    fun get(id: UUID, treeId: UUID): FamilyResponse {
         val family =
             familyRepository.findByIdAndTree(id, treeId)
                 ?: throw NotFoundException("Family not found: $id")
         return toResponse(family)
     }
 
-    fun create(request: CreateFamilyRequest): FamilyResponse {
+    fun create(request: CreateFamilyRequest, treeId: UUID): FamilyResponse {
         if (request.spouses.isEmpty()) {
             throw BadRequestException("At least one spouse is required")
         }
@@ -51,7 +49,6 @@ class FamilyService(
             validateRole(spouse.role)
         }
 
-        val treeId = treeRepository.getDefaultTreeId()
 
         val family =
             dsl.transactionResult { ctx ->
@@ -97,8 +94,10 @@ class FamilyService(
         return toResponse(family)
     }
 
-    fun delete(id: UUID) {
-        val treeId = treeRepository.getDefaultTreeId()
+    fun delete(
+        id: UUID,
+        treeId: UUID,
+    ) {
         familyRepository.findByIdAndTree(id, treeId)
             ?: throw NotFoundException("Family not found: $id")
 
@@ -110,8 +109,8 @@ class FamilyService(
     fun addChild(
         familyId: UUID,
         request: AddChildRequest,
+        treeId: UUID,
     ): ChildResponse {
-        val treeId = treeRepository.getDefaultTreeId()
         familyRepository.findByIdAndTree(familyId, treeId)
             ?: throw NotFoundException("Family not found: $familyId")
 
@@ -119,7 +118,6 @@ class FamilyService(
         val individual =
             individualRepository.findByIdAndTree(individualId, treeId)
                 ?: throw BadRequestException("Individual not found: ${request.individualId}")
-
         validatePedigree(request.pedigree)
 
         val child =
@@ -145,11 +143,10 @@ class FamilyService(
     fun addEvent(
         familyId: UUID,
         request: CreateFamilyEventRequest,
+        treeId: UUID,
     ): FamilyEventResponse {
-        val treeId = treeRepository.getDefaultTreeId()
         familyRepository.findByIdAndTree(familyId, treeId)
             ?: throw NotFoundException("Family not found: $familyId")
-
         if (request.tag.isBlank()) {
             throw BadRequestException("tag is required")
         }
