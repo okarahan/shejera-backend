@@ -22,8 +22,8 @@ import com.shejera.repositories.UserRepository
 import org.jooq.DSLContext
 import org.jooq.exception.DataAccessException
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.decodeFromString
 import java.nio.charset.StandardCharsets
 import java.util.Base64
 import java.time.OffsetDateTime
