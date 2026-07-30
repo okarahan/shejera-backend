@@ -45,5 +45,24 @@ fun Application.configureStatusPages() {
                 }
             call.respond(status = status, message = ErrorResponse(error = message))
         }
+
+        exception<Throwable> { call, cause ->
+            val root = generateSequence(cause) { it.cause }.last()
+            val message =
+                when (root) {
+                    is UnsatisfiedLinkError,
+                    is NoClassDefFoundError,
+                    ->
+                        "Image recognition native library failed to load " +
+                            "(OpenCV/Tesseract). Check the backend runtime image. " +
+                            (root.message ?: root.javaClass.simpleName)
+                    else -> cause.message ?: "Internal server error"
+                }
+            call.application.environment.log.error("Unhandled exception", cause)
+            call.respond(
+                status = HttpStatusCode.InternalServerError,
+                message = ErrorResponse(error = message),
+            )
+        }
     }
 }
