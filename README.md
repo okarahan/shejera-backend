@@ -80,7 +80,9 @@ Konfiguration über `gradle.properties` oder `-Pjooq.url=...`.
 
 ## Image
 
-GitHub Actions pusht nach `ghcr.io/okarahan/shejera-backend` bei Push auf `main` oder Tags `v*`.
+GitHub Actions: Push auf `main` erzeugt automatisch den nächsten Patch-Tag (`v0.1.x`), der Tag-Build pusht nach `ghcr.io/okarahan/shejera-backend`. Flux im Homelab aktualisiert das Deployment.
+
+Docs-only: Commit-Message mit `[skip release]` verhindert den Auto-Tag.
 
 Umgebungsvariablen im Deployment:
 
@@ -96,12 +98,3 @@ Umgebungsvariablen im Deployment:
 | `SHEJERA_BOOTSTRAP_EMAIL` | Optional: E-Mail für Bootstrap-Admin-Invite |
 | `SHEJERA_BOOTSTRAP_NAME` | Optional: Anzeigename Bootstrap-Admin |
 | `SHEJERA_BOOTSTRAP_TOKEN` | Optional: fester Bootstrap-Invite-Token |
-
-## Release
-
-```bash
-git tag v0.1.0
-git push origin v0.1.0
-```
-
-Image-Tag in `homelab/kubernetes/apps/shejera-backend/deployment.yaml` setzen.
