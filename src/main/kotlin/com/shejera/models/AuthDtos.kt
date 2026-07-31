@@ -45,7 +45,7 @@ data class InviteResponse(
     val status: String,
     val token: String? = null,
     val invitePath: String? = null,
-    /** Absolute invite URL when SHEJERA_INVITE_ORIGIN is set (e.g. http://shejera.o.karahan.de/import/...). */
+    /** Absolute invite URL when SHEJERA_INVITE_ORIGIN is set (e.g. http://shejera…/contrib/...). */
     val inviteUrl: String? = null,
     val expiresAt: String? = null,
     val createdAt: String,

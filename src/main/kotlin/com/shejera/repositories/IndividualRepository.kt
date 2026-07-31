@@ -119,6 +119,11 @@ class IndividualRepository(
             .where(INDIVIDUAL.ID.eq(id))
             .execute() > 0
 
+    fun deleteAllByTree(treeId: UUID): Int =
+        dsl.deleteFrom(INDIVIDUAL)
+            .where(INDIVIDUAL.TREE_ID.eq(treeId))
+            .execute()
+
     fun findPreferredName(individualId: UUID): IndividualNameRecord? =
         dsl.selectFrom(INDIVIDUAL_NAME)
             .where(INDIVIDUAL_NAME.INDIVIDUAL_ID.eq(individualId))

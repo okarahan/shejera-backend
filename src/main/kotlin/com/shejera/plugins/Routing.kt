@@ -39,7 +39,7 @@ fun Application.configureRouting() {
     val bootstrapToken = authService.ensureBootstrapAdminInvite()
     if (bootstrapToken != null) {
         log.warn(
-            "No admin user yet. Redeem bootstrap invite at /import/{} (email from SHEJERA_BOOTSTRAP_EMAIL or admin@shejera.local)",
+            "No admin user yet. Redeem bootstrap invite at /contrib/{} (email from SHEJERA_BOOTSTRAP_EMAIL or admin@shejera.local)",
             bootstrapToken,
         )
     }

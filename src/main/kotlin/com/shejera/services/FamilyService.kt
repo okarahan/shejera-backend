@@ -30,6 +30,10 @@ class FamilyService(
         return familyRepository.listByTree(treeId).map { toResponse(it) }
     }
 
+    fun clearTree(treeId: UUID) {
+        familyRepository.deleteAllByTree(treeId)
+    }
+
     fun get(id: UUID, treeId: UUID): FamilyResponse {
         val family =
             familyRepository.findByIdAndTree(id, treeId)

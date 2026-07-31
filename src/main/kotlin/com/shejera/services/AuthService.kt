@@ -419,12 +419,21 @@ class AuthService(
         principal: AuthPrincipal,
         treeId: UUID,
     ) {
-        if (!principal.isAdmin) throw ForbiddenException()
         val tree =
             treeRepository.findById(treeId)
                 ?: throw NotFoundException("Tree not found: $treeId")
         if (tree.kind != "contribution") {
             throw BadRequestException("Only contribution trees can be discarded")
+        }
+        if (tree.status != "draft") {
+            throw ConflictException("Only draft contribution trees can be discarded")
+        }
+        val isOwner =
+            tree.contributorUserId != null && tree.contributorUserId == principal.id
+        val isCreatorAdmin =
+            principal.isAdmin && tree.createdByUserId == principal.id
+        if (!principal.isAdmin && !isOwner && !isCreatorAdmin) {
+            throw ForbiddenException()
         }
         if (!treeRepository.delete(treeId)) {
             throw NotFoundException("Tree not found: $treeId")
@@ -441,7 +450,7 @@ class AuthService(
         token: String?,
         contributionTreeStatus: String? = null,
     ): InviteResponse {
-        val path = token?.let { "/import/$it" }
+        val path = token?.let { "/contrib/$it" }
         val origin =
             System.getenv("SHEJERA_INVITE_ORIGIN")
                 ?.trim()

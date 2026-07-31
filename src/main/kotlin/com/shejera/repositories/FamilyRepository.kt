@@ -132,6 +132,11 @@ class FamilyRepository(
             .where(FAMILY.ID.eq(id))
             .execute() > 0
 
+    fun deleteAllByTree(treeId: UUID): Int =
+        dsl.deleteFrom(FAMILY)
+            .where(FAMILY.TREE_ID.eq(treeId))
+            .execute()
+
     fun listSpouses(familyId: UUID): List<SpouseRow> =
         dsl.select(
             FAMILY_SPOUSE.ID,

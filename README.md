@@ -90,7 +90,7 @@ Umgebungsvariablen im Deployment:
 | `DATABASE_USER` | DB-Benutzer |
 | `DATABASE_PASSWORD` | DB-Passwort |
 | `PORT` | HTTP-Port (default: 8080) |
-| `SHEJERA_INVITE_ORIGIN` | Basis-URL für Invite-Links (z. B. `http://shejera.o.karahan.de`; Pfad wird zu `/import/{token}`) |
+| `SHEJERA_INVITE_ORIGIN` | Basis-URL für Invite-Links (z. B. `http://shejera.o.karahan.de`; Pfad wird zu `/contrib/{token}`) |
 | `SHEJERA_JWT_SECRET` | Secret zum Signieren/Verifizieren des Invite-JWT (HS256) |
 | `SHEJERA_JWT_TTL_DAYS` | Optional: JWT TTL in Tagen (default: 30) |
 | `SHEJERA_BOOTSTRAP_EMAIL` | Optional: E-Mail für Bootstrap-Admin-Invite |

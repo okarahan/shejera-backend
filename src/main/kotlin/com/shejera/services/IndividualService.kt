@@ -34,6 +34,10 @@ class IndividualService(
         return individualRepository.listByTree(treeId).map { toResponse(it) }
     }
 
+    fun clearTree(treeId: UUID) {
+        individualRepository.deleteAllByTree(treeId)
+    }
+
     fun get(id: UUID, treeId: UUID): IndividualResponse {
         val individual =
             individualRepository.findByIdAndTree(id, treeId)

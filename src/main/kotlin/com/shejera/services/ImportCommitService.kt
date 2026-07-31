@@ -61,6 +61,9 @@ class ImportCommitService(
             }
 
         authService.requireWrite(principal, treeId)
+        // Replace any existing draft content (avoid append duplicates on re-commit).
+        familyService.clearTree(treeId)
+        individualService.clearTree(treeId)
         persistRecognizedTree(recognized, treeId)
         return ImportCommitResponse(
             treeId = treeId.toString(),
