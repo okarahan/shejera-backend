@@ -262,7 +262,13 @@ class AuthService(
 
     fun listInvites(principal: AuthPrincipal): List<InviteResponse> {
         if (!principal.isAdmin) throw ForbiddenException()
-        return inviteRepository.listAll().map { toInviteResponse(it, token = null) }
+        return inviteRepository.listAll().map { invite ->
+            val contributionStatus =
+                invite.redeemedByUserId?.let { userId ->
+                    treeRepository.findActiveContributionForUser(userId)?.status
+                }
+            toInviteResponse(invite, token = null, contributionTreeStatus = contributionStatus)
+        }
     }
 
     fun revokeInvite(
@@ -433,6 +439,7 @@ class AuthService(
     private fun toInviteResponse(
         invite: InviteRow,
         token: String?,
+        contributionTreeStatus: String? = null,
     ): InviteResponse {
         val path = token?.let { "/import/$it" }
         val origin =
@@ -452,6 +459,8 @@ class AuthService(
             expiresAt = invite.expiresAt?.toString(),
             createdAt = invite.createdAt.toString(),
             redeemedAt = invite.redeemedAt?.toString(),
+            code = invite.id.toString().take(8),
+            contributionTreeStatus = contributionTreeStatus,
         )
     }
 

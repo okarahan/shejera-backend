@@ -50,6 +50,10 @@ data class InviteResponse(
     val expiresAt: String? = null,
     val createdAt: String,
     val redeemedAt: String? = null,
+    /** Short reference for admin list (not the secret invite token). */
+    val code: String? = null,
+    /** draft | submitted | merged | null if no contribution tree yet. */
+    val contributionTreeStatus: String? = null,
 )
 
 @Serializable
