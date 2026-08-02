@@ -3,7 +3,6 @@ name: Build and push
 on:
   push:
     branches: [main]
-    tags: ["v*"]
 
 permissions:
   contents: write
@@ -11,38 +10,7 @@ permissions:
 
 jobs:
   release:
-    if: github.ref == 'refs/heads/main' && !contains(github.event.head_commit.message, '[skip release]')
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Create and push next patch tag
-        env:
-          GIT_AUTHOR_NAME: github-actions[bot]
-          GIT_AUTHOR_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
-          GIT_COMMITTER_NAME: github-actions[bot]
-          GIT_COMMITTER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
-        run: |
-          set -euo pipefail
-          latest=$(git tag -l 'v[0-9]*' --sort=-v:refname | head -1 || true)
-          if [ -z "${latest}" ]; then
-            next="v0.1.0"
-          else
-            ver="${latest#v}"
-            major=${ver%%.*}
-            rest=${ver#*.}
-            minor=${rest%%.*}
-            patch=${rest#*.}
-            next="v${major}.${minor}.$((patch + 1))"
-          fi
-          echo "Tagging ${next} (previous: ${latest:-none})"
-          git tag -a "${next}" -m "Release ${next}"
-          git push origin "refs/tags/${next}"
-
-  build:
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: ${{ !contains(github.event.head_commit.message, '[skip release]') }}
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -61,6 +29,26 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Compute next patch tag
+        id: version
+        run: |
+          set -euo pipefail
+          latest=$(git tag -l 'v[0-9]*' --sort=-v:refname | head -1 || true)
+          if [ -z "${latest}" ]; then
+            next="v0.1.0"
+          else
+            ver="${latest#v}"
+            major=${ver%%.*}
+            rest=${ver#*.}
+            minor=${rest%%.*}
+            patch=${rest#*.}
+            next="v${major}.${minor}.$((patch + 1))"
+          fi
+          echo "tag=${next}" >> "$GITHUB_OUTPUT"
+          echo "Tagging and publishing ${next} (previous: ${latest:-none})"
 
       - uses: actions/setup-java@v4
         with:
@@ -91,4 +79,16 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository }}:latest
             ghcr.io/${{ github.repository }}:${{ github.sha }}
-            ghcr.io/${{ github.repository }}:${{ github.ref_name }}
+            ghcr.io/${{ github.repository }}:${{ steps.version.outputs.tag }}
+
+      - name: Create and push git tag
+        env:
+          GIT_AUTHOR_NAME: github-actions[bot]
+          GIT_AUTHOR_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+          GIT_COMMITTER_NAME: github-actions[bot]
+          GIT_COMMITTER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+        run: |
+          set -euo pipefail
+          tag="${{ steps.version.outputs.tag }}"
+          git tag -a "${tag}" -m "Release ${tag}"
+          git push origin "refs/tags/${tag}"
