@@ -283,15 +283,8 @@ class AuthService(
 
     fun ensureBootstrapAdminInvite(): String? {
         if (userRepository.countAdmins() > 0) return null
-        val pendingAdmin =
-            inviteRepository.listAll().any {
-                it.status == "pending" && it.role == "admin" && !isInviteExpired(it)
-            }
-        if (pendingAdmin) return null
 
-        val rawToken =
-            System.getenv("SHEJERA_BOOTSTRAP_TOKEN")?.takeIf { it.isNotBlank() }
-                ?: AuthTokens.newToken()
+        val fixedToken = System.getenv("SHEJERA_BOOTSTRAP_TOKEN")?.takeIf { it.isNotBlank() }
         val email =
             System.getenv("SHEJERA_BOOTSTRAP_EMAIL")?.takeIf { it.isNotBlank() }
                 ?: "admin@shejera.local"
@@ -299,6 +292,30 @@ class AuthService(
             System.getenv("SHEJERA_BOOTSTRAP_NAME")?.takeIf { it.isNotBlank() }
                 ?: "Admin"
 
+        val pendingAdmins =
+            inviteRepository.listAll().filter {
+                it.status == "pending" && it.role == "admin" && !isInviteExpired(it)
+            }
+
+        // Fixed token in secrets: replace any unknown pending admin invite so the link is recoverable.
+        if (fixedToken != null) {
+            val wantHash = AuthTokens.sha256(fixedToken)
+            if (pendingAdmins.any { it.tokenHash == wantHash }) return null
+            pendingAdmins.forEach { inviteRepository.revoke(it.id) }
+            inviteRepository.insert(
+                tokenHash = wantHash,
+                email = email,
+                displayName = displayName,
+                role = "admin",
+                createdByUserId = null,
+                expiresAt = OffsetDateTime.now().plusDays(30),
+            )
+            return fixedToken
+        }
+
+        if (pendingAdmins.isNotEmpty()) return null
+
+        val rawToken = AuthTokens.newToken()
         inviteRepository.insert(
             tokenHash = AuthTokens.sha256(rawToken),
             email = email,
