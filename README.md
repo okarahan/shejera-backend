@@ -80,9 +80,13 @@ Konfiguration über `gradle.properties` oder `-Pjooq.url=...`.
 
 ## Image
 
-GitHub Actions: Push auf `main` erzeugt automatisch den nächsten Patch-Tag (`v0.1.x`), der Tag-Build pusht nach `ghcr.io/okarahan/shejera-backend`. Flux im Homelab aktualisiert das Deployment.
+GitHub Actions: Push auf `main` erzeugt automatisch den nächsten Patch-Tag (`v0.1.x`), pusht das Image nach `ghcr.io/okarahan/shejera-backend`, verifiziert den Manifest-Digest und committed den neuen Image-Pin nach [homelab](https://github.com/okarahan/homelab) (`kubernetes/apps/shejera/deployment.yaml`). Flux rollt das Deployment aus.
 
-Docs-only: Commit-Message mit `[skip release]` verhindert den Auto-Tag.
+Voraussetzung: Repo-Secret `HOMELAB_DEPLOY_TOKEN` (fine-grained PAT, nur `okarahan/homelab`, Contents: Read+Write).
+
+Commit-Flags:
+- `[skip release]` — kein Tag/Image/Deploy
+- `[skip deploy]` — Tag+Image ja, Homelab-Pin nein
 
 Umgebungsvariablen im Deployment:
 

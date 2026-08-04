@@ -92,3 +92,60 @@ jobs:
           tag="${{ steps.version.outputs.tag }}"
           git tag -a "${tag}" -m "Release ${tag}"
           git push origin "refs/tags/${tag}"
+
+      - name: Verify image in GHCR
+        if: ${{ !contains(github.event.head_commit.message, '[skip deploy]') }}
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          tag="${{ steps.version.outputs.tag }}"
+          image="ghcr.io/${{ github.repository }}:${tag}"
+          token=$(curl -fsSL -u "${{ github.actor }}:${GHCR_TOKEN}" \
+            "https://ghcr.io/token?service=ghcr.io&scope=repository:${{ github.repository }}:pull" \
+            | jq -r .token)
+          curl -fsSIL -H "Authorization: Bearer ${token}" \
+            "https://ghcr.io/v2/${{ github.repository }}/manifests/${tag}" >/dev/null
+          echo "Verified ${image}"
+
+      - name: Bump image pin in homelab
+        if: ${{ !contains(github.event.head_commit.message, '[skip deploy]') }}
+        env:
+          HOMELAB_DEPLOY_TOKEN: ${{ secrets.HOMELAB_DEPLOY_TOKEN }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          set -euo pipefail
+          if [ -z "${HOMELAB_DEPLOY_TOKEN:-}" ]; then
+            echo "HOMELAB_DEPLOY_TOKEN secret is not set; skipping homelab pin bump"
+            exit 1
+          fi
+          file="kubernetes/apps/shejera/deployment.yaml"
+          image="ghcr.io/okarahan/shejera-backend:${TAG}"
+          work=$(mktemp -d)
+          trap 'rm -rf "${work}"' EXIT
+          git clone --depth 20 \
+            "https://x-access-token:${HOMELAB_DEPLOY_TOKEN}@github.com/okarahan/homelab.git" \
+            "${work}/homelab"
+          cd "${work}/homelab"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if grep -q "image: ${image}" "${file}"; then
+            echo "Homelab already pinned to ${image}; nothing to do"
+            exit 0
+          fi
+          sed -i -E "s|image: ghcr.io/okarahan/shejera-backend:[^[:space:]]+|image: ${image}|" "${file}"
+          if ! grep -q "image: ${image}" "${file}"; then
+            echo "Failed to bump image pin in ${file}" >&2
+            exit 1
+          fi
+          git add "${file}"
+          git commit -m "chore(shejera): bump backend to ${TAG}"
+          for attempt in 1 2 3 4 5; do
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            echo "Push rejected (attempt ${attempt}); rebasing..."
+            git pull --rebase origin main
+          done
+          echo "Failed to push homelab pin after retries" >&2
+          exit 1
