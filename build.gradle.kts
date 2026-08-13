@@ -55,6 +55,8 @@ dependencies {
 
     implementation("ch.qos.logback:logback-classic:$logbackVersion")
 
+    implementation("org.eclipse.angus:angus-mail:2.0.3")
+
     implementation("org.openpnp:opencv:4.9.0-0")
     // Bundled native Tesseract + Leptonica (no system brew install required)
     implementation("org.bytedeco:tesseract-platform:5.5.0-1.5.11")

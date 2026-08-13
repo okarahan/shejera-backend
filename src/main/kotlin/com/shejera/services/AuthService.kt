@@ -8,15 +8,23 @@ import com.shejera.api.UnauthorizedException
 import com.shejera.auth.AuthPrincipal
 import com.shejera.auth.AuthTokens
 import com.shejera.auth.TreeAccess
+import com.shejera.config.SmtpConfig
+import com.shejera.db.InviteRequestRow
 import com.shejera.db.InviteRow
 import com.shejera.db.TreeMetaRow
+import com.shejera.models.ApproveInviteRequestBody
+import com.shejera.models.ApproveInviteRequestResponse
 import com.shejera.models.CreateContributionTreeRequest
 import com.shejera.models.CreateInviteRequest
 import com.shejera.models.InvitePreviewResponse
+import com.shejera.models.InviteRequestResponse
 import com.shejera.models.InviteResponse
 import com.shejera.models.MeResponse
+import com.shejera.models.RequestInviteRequest
+import com.shejera.models.RequestInviteResponse
 import com.shejera.models.TreeResponse
 import com.shejera.repositories.InviteRepository
+import com.shejera.repositories.InviteRequestRepository
 import com.shejera.repositories.TreeRepository
 import com.shejera.repositories.UserRepository
 import org.jooq.DSLContext
@@ -36,7 +44,9 @@ class AuthService(
     private val dsl: DSLContext,
     private val userRepository: UserRepository = UserRepository(dsl),
     private val inviteRepository: InviteRepository = InviteRepository(dsl),
+    private val inviteRequestRepository: InviteRequestRepository = InviteRequestRepository(dsl),
     private val treeRepository: TreeRepository = TreeRepository(dsl),
+    private val emailService: EmailService = EmailService(SmtpConfig.empty()),
 ) {
     private val jwtSecret: String =
         System.getenv("SHEJERA_JWT_SECRET")?.takeIf { it.isNotBlank() } ?: "dev-jwt-secret"
@@ -281,6 +291,114 @@ class AuthService(
         }
     }
 
+    /**
+     * Public: request an invite by email (required).
+     * Sends a confirmation mail (“isteğin alındı”); invite link only after admin approve.
+     * Manual admin invites never send mail automatically.
+     */
+    fun requestInvite(request: RequestInviteRequest): RequestInviteResponse {
+        val email = request.email.trim()
+        if (email.isEmpty() || email.length > 320) {
+            throw BadRequestException("E-posta gerekli")
+        }
+        val displayName =
+            request.displayName?.trim()?.takeIf { it.isNotEmpty() }
+                ?: email.substringBefore("@").ifBlank { "Katkıda bulunan" }
+
+        // Soft success when already a user or pending request — still send confirmation
+        // so we do not reveal account existence; no deep email validation.
+        val alreadyUser = userRepository.findByEmail(email) != null
+        val alreadyPending = inviteRequestRepository.findPendingByEmail(email) != null
+
+        if (!alreadyUser && !alreadyPending) {
+            try {
+                inviteRequestRepository.insert(email = email, displayName = displayName)
+            } catch (_: DataAccessException) {
+                // Unique pending index race — treat as success
+            }
+        }
+
+        val emailSent =
+            emailService.sendInviteRequestReceivedEmail(
+                toEmail = email,
+                displayName = displayName,
+            )
+
+        return RequestInviteResponse(
+            message =
+                if (emailSent) {
+                    "Davetiye isteği gönderildi. Onay e-postasını kontrol et."
+                } else {
+                    "Davetiye isteği alındı. Onay e-postası şu an gönderilemedi; yönetici talebini yine de görecek."
+                },
+            emailSent = emailSent,
+        )
+    }
+
+    fun listInviteRequests(principal: AuthPrincipal): List<InviteRequestResponse> {
+        if (!principal.isAdmin) throw ForbiddenException()
+        return inviteRequestRepository.listAll().map { toInviteRequestResponse(it) }
+    }
+
+    fun approveInviteRequest(
+        principal: AuthPrincipal,
+        requestId: UUID,
+        body: ApproveInviteRequestBody,
+    ): ApproveInviteRequestResponse {
+        if (!principal.isAdmin) throw ForbiddenException()
+        val req =
+            inviteRequestRepository.findById(requestId)
+                ?: throw NotFoundException("Invite request not found")
+        if (req.status != "pending") {
+            throw ConflictException("Invite request is not pending")
+        }
+
+        val invite =
+            createInvite(
+                principal,
+                CreateInviteRequest(
+                    email = req.email,
+                    displayName = req.displayName,
+                    role = "contributor",
+                    expiresInDays = body.expiresInDays ?: 30,
+                ),
+            )
+
+        if (!inviteRequestRepository.markApproved(requestId, principal.id, UUID.fromString(invite.id))) {
+            throw ConflictException("Invite request could not be approved")
+        }
+
+        val inviteUrl =
+            invite.inviteUrl
+                ?: invite.invitePath?.let { path ->
+                    inviteOrigin()?.let { "$it$path" }
+                }
+
+        val emailSent =
+            if (inviteUrl != null) {
+                emailService.sendInviteApprovedEmail(req.email, req.displayName, inviteUrl)
+            } else {
+                false
+            }
+
+        val updated = inviteRequestRepository.findById(requestId)!!
+        return ApproveInviteRequestResponse(
+            request = toInviteRequestResponse(updated),
+            invite = invite,
+            emailSent = emailSent,
+        )
+    }
+
+    fun rejectInviteRequest(
+        principal: AuthPrincipal,
+        requestId: UUID,
+    ) {
+        if (!principal.isAdmin) throw ForbiddenException()
+        if (!inviteRequestRepository.markRejected(requestId, principal.id)) {
+            throw NotFoundException("Pending invite request not found: $requestId")
+        }
+    }
+
     fun ensureBootstrapAdminInvite(): String? {
         if (userRepository.countAdmins() > 0) return null
 
@@ -457,6 +575,23 @@ class AuthService(
         }
     }
 
+    private fun inviteOrigin(): String? =
+        System.getenv("SHEJERA_INVITE_ORIGIN")
+            ?.trim()
+            ?.trimEnd('/')
+            ?.takeIf { it.isNotBlank() }
+
+    private fun toInviteRequestResponse(row: InviteRequestRow): InviteRequestResponse =
+        InviteRequestResponse(
+            id = row.id.toString(),
+            email = row.email,
+            displayName = row.displayName,
+            status = row.status,
+            createdAt = row.createdAt.toString(),
+            resolvedAt = row.resolvedAt?.toString(),
+            inviteId = row.inviteId?.toString(),
+        )
+
     private fun isInviteExpired(invite: InviteRow): Boolean {
         val expires = invite.expiresAt ?: return false
         return expires.isBefore(OffsetDateTime.now())
@@ -468,11 +603,7 @@ class AuthService(
         contributionTreeStatus: String? = null,
     ): InviteResponse {
         val path = token?.let { "/contrib/$it" }
-        val origin =
-            System.getenv("SHEJERA_INVITE_ORIGIN")
-                ?.trim()
-                ?.trimEnd('/')
-                ?.takeIf { it.isNotBlank() }
+        val origin = inviteOrigin()
         return InviteResponse(
             id = invite.id.toString(),
             email = invite.email,

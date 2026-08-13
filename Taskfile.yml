@@ -16,10 +16,18 @@ tasks:
       - "{{.COMPOSE}} down"
 
   run:
-    desc: Start backend locally with Gradle (starts Postgres if needed)
+    desc: Start backend locally (loads .env, starts Postgres if needed)
     deps: [db]
     cmds:
       - |
+        set -a
+        if [ -f .env ]; then
+          # shellcheck disable=SC1091
+          . ./.env
+        else
+          echo "Hinweis: keine .env — cp .env.example .env (SMTP-Passwort setzen)" >&2
+        fi
+        set +a
         source "$HOME/.sdkman/bin/sdkman-init.sh" 2>/dev/null || true
         ./gradlew run --no-daemon
 

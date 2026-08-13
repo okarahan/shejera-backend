@@ -32,6 +32,22 @@ object InviteTable {
     val REDEEMED_AT = DSL.field(DSL.name("invite", "redeemed_at"), SQLDataType.TIMESTAMPWITHTIMEZONE)
 }
 
+object InviteRequestTable {
+    val TABLE = DSL.table(DSL.name("invite_request"))
+    val ID = DSL.field(DSL.name("invite_request", "id"), SQLDataType.UUID.nullable(false))
+    val EMAIL = DSL.field(DSL.name("invite_request", "email"), SQLDataType.CLOB.nullable(false))
+    val DISPLAY_NAME =
+        DSL.field(DSL.name("invite_request", "display_name"), SQLDataType.CLOB.nullable(false))
+    val STATUS = DSL.field(DSL.name("invite_request", "status"), SQLDataType.CLOB.nullable(false))
+    val CREATED_AT =
+        DSL.field(DSL.name("invite_request", "created_at"), SQLDataType.TIMESTAMPWITHTIMEZONE.nullable(false))
+    val RESOLVED_AT =
+        DSL.field(DSL.name("invite_request", "resolved_at"), SQLDataType.TIMESTAMPWITHTIMEZONE)
+    val RESOLVED_BY_USER_ID =
+        DSL.field(DSL.name("invite_request", "resolved_by_user_id"), SQLDataType.UUID)
+    val INVITE_ID = DSL.field(DSL.name("invite_request", "invite_id"), SQLDataType.UUID)
+}
+
 object AppSessionTable {
     val TABLE = DSL.table(DSL.name("app_session"))
     val ID = DSL.field(DSL.name("app_session", "id"), SQLDataType.UUID.nullable(false))
@@ -74,6 +90,17 @@ data class InviteRow(
     val expiresAt: OffsetDateTime?,
     val createdAt: OffsetDateTime,
     val redeemedAt: OffsetDateTime?,
+)
+
+data class InviteRequestRow(
+    val id: UUID,
+    val email: String,
+    val displayName: String,
+    val status: String,
+    val createdAt: OffsetDateTime,
+    val resolvedAt: OffsetDateTime?,
+    val resolvedByUserId: UUID?,
+    val inviteId: UUID?,
 )
 
 data class TreeMetaRow(

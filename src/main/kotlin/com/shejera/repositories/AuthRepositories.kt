@@ -3,6 +3,8 @@ package com.shejera.repositories
 import com.shejera.db.AppSessionTable
 import com.shejera.db.AppUserRow
 import com.shejera.db.AppUserTable
+import com.shejera.db.InviteRequestRow
+import com.shejera.db.InviteRequestTable
 import com.shejera.db.InviteRow
 import com.shejera.db.InviteTable
 import org.jooq.DSLContext
@@ -189,6 +191,117 @@ class InviteRepository(
             expiresAt = get(InviteTable.EXPIRES_AT),
             createdAt = get(InviteTable.CREATED_AT)!!,
             redeemedAt = get(InviteTable.REDEEMED_AT),
+        )
+}
+
+class InviteRequestRepository(
+    private val dsl: DSLContext,
+) {
+    fun findById(id: UUID): InviteRequestRow? =
+        dsl
+            .selectFromRequest()
+            .where(InviteRequestTable.ID.eq(id))
+            .fetchOne()
+            ?.toRequestRow()
+
+    fun findPendingByEmail(email: String): InviteRequestRow? =
+        dsl
+            .selectFromRequest()
+            .where(
+                DSL.lower(InviteRequestTable.EMAIL).eq(email.lowercase()),
+                InviteRequestTable.STATUS.eq("pending"),
+            ).fetchOne()
+            ?.toRequestRow()
+
+    fun listAll(): List<InviteRequestRow> =
+        dsl
+            .selectFromRequest()
+            .orderBy(InviteRequestTable.CREATED_AT.desc())
+            .fetch()
+            .map { it.toRequestRow() }
+
+    fun listPending(): List<InviteRequestRow> =
+        dsl
+            .selectFromRequest()
+            .where(InviteRequestTable.STATUS.eq("pending"))
+            .orderBy(InviteRequestTable.CREATED_AT.asc())
+            .fetch()
+            .map { it.toRequestRow() }
+
+    fun insert(
+        email: String,
+        displayName: String,
+    ): InviteRequestRow {
+        val id = UUID.randomUUID()
+        val createdAt = OffsetDateTime.now()
+        dsl
+            .insertInto(InviteRequestTable.TABLE)
+            .set(InviteRequestTable.ID, id)
+            .set(InviteRequestTable.EMAIL, email.trim())
+            .set(InviteRequestTable.DISPLAY_NAME, displayName.trim())
+            .set(InviteRequestTable.STATUS, "pending")
+            .set(InviteRequestTable.CREATED_AT, createdAt)
+            .execute()
+        return InviteRequestRow(
+            id = id,
+            email = email.trim(),
+            displayName = displayName.trim(),
+            status = "pending",
+            createdAt = createdAt,
+            resolvedAt = null,
+            resolvedByUserId = null,
+            inviteId = null,
+        )
+    }
+
+    fun markApproved(
+        id: UUID,
+        resolvedByUserId: UUID,
+        inviteId: UUID,
+    ): Boolean =
+        dsl
+            .update(InviteRequestTable.TABLE)
+            .set(InviteRequestTable.STATUS, "approved")
+            .set(InviteRequestTable.RESOLVED_AT, OffsetDateTime.now())
+            .set(InviteRequestTable.RESOLVED_BY_USER_ID, resolvedByUserId)
+            .set(InviteRequestTable.INVITE_ID, inviteId)
+            .where(InviteRequestTable.ID.eq(id), InviteRequestTable.STATUS.eq("pending"))
+            .execute() == 1
+
+    fun markRejected(
+        id: UUID,
+        resolvedByUserId: UUID,
+    ): Boolean =
+        dsl
+            .update(InviteRequestTable.TABLE)
+            .set(InviteRequestTable.STATUS, "rejected")
+            .set(InviteRequestTable.RESOLVED_AT, OffsetDateTime.now())
+            .set(InviteRequestTable.RESOLVED_BY_USER_ID, resolvedByUserId)
+            .where(InviteRequestTable.ID.eq(id), InviteRequestTable.STATUS.eq("pending"))
+            .execute() == 1
+
+    private fun DSLContext.selectFromRequest() =
+        select(
+            InviteRequestTable.ID,
+            InviteRequestTable.EMAIL,
+            InviteRequestTable.DISPLAY_NAME,
+            InviteRequestTable.STATUS,
+            InviteRequestTable.CREATED_AT,
+            InviteRequestTable.RESOLVED_AT,
+            InviteRequestTable.RESOLVED_BY_USER_ID,
+            InviteRequestTable.INVITE_ID,
+        ).from(InviteRequestTable.TABLE)
+
+    private fun org.jooq.Record.toRequestRow() =
+        InviteRequestRow(
+            id = get(InviteRequestTable.ID)!!,
+            email = get(InviteRequestTable.EMAIL)!!,
+            displayName = get(InviteRequestTable.DISPLAY_NAME)!!,
+            status = get(InviteRequestTable.STATUS)!!,
+            createdAt = get(InviteRequestTable.CREATED_AT)!!,
+            resolvedAt = get(InviteRequestTable.RESOLVED_AT),
+            resolvedByUserId = get(InviteRequestTable.RESOLVED_BY_USER_ID),
+            inviteId = get(InviteRequestTable.INVITE_ID),
         )
 }
 

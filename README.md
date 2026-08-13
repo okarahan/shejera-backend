@@ -102,3 +102,11 @@ Umgebungsvariablen im Deployment:
 | `SHEJERA_BOOTSTRAP_EMAIL` | Optional: E-Mail für Bootstrap-Admin-Invite |
 | `SHEJERA_BOOTSTRAP_NAME` | Optional: Anzeigename Bootstrap-Admin |
 | `SHEJERA_BOOTSTRAP_TOKEN` | Optional: fester Bootstrap-Invite-Token |
+| `SHEJERA_SMTP_HOST` | SMTP-Host (lokal: `.env` via `task run`; Cluster: Deployment) |
+| `SHEJERA_SMTP_PORT` | SMTP-Port (default im Code: 587 wenn unset) |
+| `SHEJERA_SMTP_USER` | SMTP-Benutzer |
+| `SHEJERA_SMTP_PASSWORD` | SMTP-Passwort — lokal nur in `.env` |
+| `SHEJERA_SMTP_FROM` | Absenderadresse |
+| `SHEJERA_SMTP_STARTTLS` | STARTTLS (`true`/`false`) |
+
+Lokal: `cp .env.example .env`, Passwort setzen, `task run` (lädt `.env` automatisch). Keine SMTP-Werte in `application.conf`.

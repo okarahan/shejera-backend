@@ -37,6 +37,42 @@ data class CreateInviteRequest(
 )
 
 @Serializable
+data class RequestInviteRequest(
+    val email: String,
+    val displayName: String? = null,
+)
+
+@Serializable
+data class RequestInviteResponse(
+    val ok: Boolean = true,
+    val message: String,
+    val emailSent: Boolean = false,
+)
+
+@Serializable
+data class InviteRequestResponse(
+    val id: String,
+    val email: String,
+    val displayName: String,
+    val status: String,
+    val createdAt: String,
+    val resolvedAt: String? = null,
+    val inviteId: String? = null,
+)
+
+@Serializable
+data class ApproveInviteRequestBody(
+    val expiresInDays: Int? = 30,
+)
+
+@Serializable
+data class ApproveInviteRequestResponse(
+    val request: InviteRequestResponse,
+    val invite: InviteResponse,
+    val emailSent: Boolean,
+)
+
+@Serializable
 data class InviteResponse(
     val id: String,
     val email: String,

@@ -1,7 +1,9 @@
 package com.shejera.routes
 
+import com.shejera.models.ApproveInviteRequestBody
 import com.shejera.models.CreateInviteRequest
 import com.shejera.models.RedeemInviteRequest
+import com.shejera.models.RequestInviteRequest
 import com.shejera.services.AuthService
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.request.receive
@@ -35,6 +37,39 @@ fun Route.authRoutes(authService: AuthService) {
         get("/me") {
             val principal = call.requirePrincipal()
             call.respond(authService.me(principal))
+        }
+    }
+
+    /** Public: ask for an invite (admin must approve). */
+    post("/invite-requests") {
+        val body = call.receive<RequestInviteRequest>()
+        call.respond(HttpStatusCode.Created, authService.requestInvite(body))
+    }
+
+    route("/invite-requests") {
+        get {
+            val principal = call.requirePrincipal()
+            call.respond(authService.listInviteRequests(principal))
+        }
+
+        post("/{id}/approve") {
+            val principal = call.requirePrincipal()
+            val body =
+                runCatching { call.receive<ApproveInviteRequestBody>() }
+                    .getOrElse { ApproveInviteRequestBody() }
+            val result =
+                authService.approveInviteRequest(
+                    principal,
+                    parseUuidParam(call.parameters["id"]),
+                    body,
+                )
+            call.respond(result)
+        }
+
+        post("/{id}/reject") {
+            val principal = call.requirePrincipal()
+            authService.rejectInviteRequest(principal, parseUuidParam(call.parameters["id"]))
+            call.respond(HttpStatusCode.NoContent)
         }
     }
 

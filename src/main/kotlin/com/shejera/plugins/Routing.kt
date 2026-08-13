@@ -1,5 +1,6 @@
 package com.shejera.plugins
 
+import com.shejera.config.SmtpConfig
 import com.shejera.importing.createImageRecognizerSetup
 import com.shejera.repositories.EventRepository
 import com.shejera.repositories.FamilyRepository
@@ -15,6 +16,7 @@ import com.shejera.routes.individualRoutes
 import com.shejera.routes.openApiRoutes
 import com.shejera.routes.treeRoutes
 import com.shejera.services.AuthService
+import com.shejera.services.EmailService
 import com.shejera.services.FamilyService
 import com.shejera.services.ImportCommitService
 import com.shejera.services.ImportService
@@ -33,7 +35,20 @@ fun Application.configureRouting() {
     val placeRepository = PlaceRepository(dsl)
     val eventRepository = EventRepository(dsl)
 
-    val authService = AuthService(dsl)
+    val smtpConfig = SmtpConfig.from(environment.config)
+    val emailService = EmailService(smtpConfig)
+    if (smtpConfig.configured) {
+        log.info(
+            "SMTP configured (host={}, port={}, from={})",
+            smtpConfig.host,
+            smtpConfig.port,
+            smtpConfig.fromAddress,
+        )
+    } else {
+        log.warn("SMTP not configured — invite emails will not be sent (set shejera.smtp / SHEJERA_SMTP_*)")
+    }
+
+    val authService = AuthService(dsl, emailService = emailService)
     attributes.put(AuthServiceKey, authService)
 
     val bootstrapToken = authService.ensureBootstrapAdminInvite()
