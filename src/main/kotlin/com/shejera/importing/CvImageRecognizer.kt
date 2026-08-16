@@ -1,6 +1,7 @@
 package com.shejera.importing
 
 import com.shejera.api.BadRequestException
+import com.shejera.importing.cv.LinkedTreePersonDeduper
 import com.shejera.importing.cv.TreeAssembler
 import com.shejera.importing.cv.steps.ArrowDetectionStep
 import com.shejera.importing.cv.steps.BirthPlaceOcrStep
@@ -20,7 +21,7 @@ import kotlin.io.path.ExperimentalPathApi
 import kotlin.io.path.deleteRecursively
 
 /**
- * Production image recognizer: runs CV steps 1–8 and maps the result to [RecognizedTree].
+ * Production image recognizer: runs CV steps 1–9 and maps the result to [RecognizedTree].
  */
 class CvImageRecognizer(
     private val tesseractLanguage: String = "tur+eng",
@@ -125,6 +126,15 @@ class CvImageRecognizer(
                         tesseractDataPath,
                     ).tree
             log.info("[cv] step=8-places done")
+
+            log.info("[cv] step=9-dedupe")
+            val beforePeople = tree.nodeCount
+            tree = LinkedTreePersonDeduper.dedupe(tree)
+            log.info(
+                "[cv] step=9-dedupe done nodes={} (was {})",
+                tree.nodeCount,
+                beforePeople,
+            )
 
             val recognized = TreeAssembler.fromStepTree(tree)
             log.info(
