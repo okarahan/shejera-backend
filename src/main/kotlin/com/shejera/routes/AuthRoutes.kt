@@ -48,12 +48,12 @@ fun Route.authRoutes(authService: AuthService) {
 
     route("/invite-requests") {
         get {
-            val principal = call.requirePrincipal()
+            val principal = call.requireAdmin()
             call.respond(authService.listInviteRequests(principal))
         }
 
         post("/{id}/approve") {
-            val principal = call.requirePrincipal()
+            val principal = call.requireAdmin()
             val body =
                 runCatching { call.receive<ApproveInviteRequestBody>() }
                     .getOrElse { ApproveInviteRequestBody() }
@@ -67,7 +67,7 @@ fun Route.authRoutes(authService: AuthService) {
         }
 
         post("/{id}/reject") {
-            val principal = call.requirePrincipal()
+            val principal = call.requireAdmin()
             authService.rejectInviteRequest(principal, parseUuidParam(call.parameters["id"]))
             call.respond(HttpStatusCode.NoContent)
         }
@@ -75,19 +75,19 @@ fun Route.authRoutes(authService: AuthService) {
 
     route("/invites") {
         get {
-            val principal = call.requirePrincipal()
+            val principal = call.requireAdmin()
             call.respond(authService.listInvites(principal))
         }
 
         post {
-            val principal = call.requirePrincipal()
+            val principal = call.requireAdmin()
             val body = call.receive<CreateInviteRequest>()
             val created = authService.createInvite(principal, body)
             call.respond(HttpStatusCode.Created, created)
         }
 
         delete("/{id}") {
-            val principal = call.requirePrincipal()
+            val principal = call.requireAdmin()
             authService.revokeInvite(principal, parseUuidParam(call.parameters["id"]))
             call.respond(HttpStatusCode.NoContent)
         }

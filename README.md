@@ -99,6 +99,18 @@ Pull Requests gegen `main` triggern [`.github/workflows/staging-pr.yml`](.github
 
 Siehe [homelab …/shejera-staging/README.md](https://github.com/okarahan/homelab/blob/main/kubernetes/apps/shejera-staging/README.md) für einmaliges Cluster-Setup (Secrets, DNS).
 
+## Admin-Zugang
+
+Admin-Endpunkte (`/auth/invites*`, `/auth/invite-requests*`) verlangen eine Admin-Session (`role == "admin"`); Contributor- oder fremde Sessions bekommen `403 Forbidden`. Produkiv schützt zusätzlich Authelia den Frontend-Pfad `/admin/*`.
+
+Master-Einstieg ohne wiederkehrenden Invite-Log-in:
+
+1. `SHEJERA_BOOTSTRAP_TOKEN` im Deployment setzen (fester Invite-Token, z. B. langer Zufallsstring).
+2. Einmal `/contrib/<token>` öffnen — Backend erstellt beim Start einen Bootstrap-Admin-Invite.
+3. `shejera_session`-Cookie (JWT, TTL `SHEJERA_JWT_TTL_DAYS`, default 30 Tage) bleibt gesetzt; danach `/admin/*` direkt erreichbar.
+
+Nach Ablauf der Session reicht dasselbe Token erneut (Invite wird bei gesetztem `SHEJERA_BOOTSTRAP_TOKEN` beim Start neu angelegt).
+
 ## Umgebungsvariablen im Deployment
 
 | Variable | Beschreibung |
