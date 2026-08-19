@@ -81,8 +81,15 @@ class IndividualService(
                     txRepo.insertBiographyNote(treeId, created.id!!, request.biography)
                 }
 
-                if (!request.birthDate.isNullOrBlank()) {
-                    upsertBirthEvent(txDsl, created.id!!, request.birthDate)
+                if (!request.birthDate.isNullOrBlank() || !request.birthPlace.isNullOrBlank()) {
+                    upsertBirthEvent(
+                        txDsl,
+                        created.id!!,
+                        birthDate = request.birthDate,
+                        birthPlace = request.birthPlace,
+                        updateDate = true,
+                        updatePlace = true,
+                    )
                 }
 
                 if (!request.deathDate.isNullOrBlank()) {
@@ -129,8 +136,15 @@ class IndividualService(
                 }
             }
 
-            if (request.birthDate != null) {
-                upsertBirthEvent(txDsl, id, request.birthDate)
+            if (request.birthDate != null || request.birthPlace != null) {
+                upsertBirthEvent(
+                    txDsl,
+                    id,
+                    birthDate = request.birthDate,
+                    birthPlace = request.birthPlace,
+                    updateDate = request.birthDate != null,
+                    updatePlace = request.birthPlace != null,
+                )
             }
 
             if (request.deathDate != null) {
@@ -295,7 +309,7 @@ class IndividualService(
     private fun toResponse(individual: IndividualRecord): IndividualResponse {
         val name = individualRepository.findPreferredName(individual.id!!)
         val biography = individualRepository.findBiographyNote(individual.id!!)?.text
-        val birthDate = eventRepository.findBirthEvent(individual.id!!)?.dateText
+        val birth = eventRepository.findBirthEvent(individual.id!!)
         val deathDate = eventRepository.findDeathEvent(individual.id!!)?.dateText
 
         return IndividualResponse(
@@ -306,8 +320,9 @@ class IndividualService(
             givenName = name?.givenName,
             surname = name?.surname,
             biography = biography,
-            birthDate = birthDate,
+            birthDate = birth?.dateText,
             deathDate = deathDate,
+            birthPlace = birth?.placeName,
         )
     }
 
@@ -346,22 +361,44 @@ class IndividualService(
     private fun upsertBirthEvent(
         dsl: DSLContext,
         individualId: UUID,
-        birthDate: String,
+        birthDate: String?,
+        birthPlace: String?,
+        updateDate: Boolean,
+        updatePlace: Boolean,
     ) {
         val eventRepo = EventRepository(dsl)
         val existing = eventRepo.findBirthEvent(individualId)
 
-        if (birthDate.isBlank()) {
+        val (dateText, dateSort) =
+            when {
+                !updateDate -> existing?.dateText to existing?.dateSort
+                birthDate.isNullOrBlank() -> null to null
+                else -> parsePersonDate(birthDate, "birthDate")
+            }
+        val placeName =
+            when {
+                !updatePlace -> existing?.placeName?.trim()?.takeIf { it.isNotEmpty() }
+                birthPlace.isNullOrBlank() -> null
+                else -> birthPlace.trim()
+            }
+
+        if (dateText.isNullOrBlank() && placeName.isNullOrBlank()) {
             if (existing != null) {
                 eventRepo.deleteIndividualEvent(existing.id)
             }
             return
         }
 
-        val (dateText, dateSort) = parsePersonDate(birthDate, "birthDate")
+        val placeId = placeName?.let { PlaceRepository(dsl).findOrCreate(it).id }
 
         if (existing != null) {
-            eventRepo.updateIndividualEvent(existing.id, dateText, dateSort)
+            eventRepo.updateIndividualEvent(
+                existing.id,
+                dateText,
+                dateSort,
+                placeId = placeId,
+                updatePlace = true,
+            )
         } else {
             eventRepo.insertIndividualEvent(
                 individualId = individualId,
@@ -369,7 +406,7 @@ class IndividualService(
                 eventType = null,
                 dateText = dateText,
                 dateSort = dateSort,
-                placeId = null,
+                placeId = placeId,
                 description = null,
             )
         }

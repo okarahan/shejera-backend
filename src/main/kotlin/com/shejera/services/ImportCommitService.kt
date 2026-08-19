@@ -94,6 +94,7 @@ class ImportCommitService(
                         isLiving = person.deathDate.isNullOrBlank(),
                         birthDate = person.birthDate?.trim()?.takeIf { it.isNotEmpty() },
                         deathDate = person.deathDate?.trim()?.takeIf { it.isNotEmpty() },
+                        birthPlace = person.birthPlace?.trim()?.takeIf { it.isNotEmpty() },
                     ),
                     treeId,
                 )

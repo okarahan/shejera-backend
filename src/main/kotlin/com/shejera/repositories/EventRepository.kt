@@ -70,13 +70,20 @@ class EventRepository(
         id: UUID,
         dateText: String?,
         dateSort: LocalDate?,
-    ): IndividualEventRecord =
-        dsl.update(INDIVIDUAL_EVENT)
-            .set(INDIVIDUAL_EVENT.DATE_TEXT, dateText)
-            .set(INDIVIDUAL_EVENT.DATE_SORT, dateSort)
+        placeId: UUID? = null,
+        updatePlace: Boolean = false,
+    ): IndividualEventRecord {
+        val step =
+            dsl.update(INDIVIDUAL_EVENT)
+                .set(INDIVIDUAL_EVENT.DATE_TEXT, dateText)
+                .set(INDIVIDUAL_EVENT.DATE_SORT, dateSort)
+        val withPlace =
+            if (updatePlace) step.set(INDIVIDUAL_EVENT.PLACE_ID, placeId) else step
+        return withPlace
             .where(INDIVIDUAL_EVENT.ID.eq(id))
             .returning()
             .fetchOne()!!
+    }
 
     fun deleteIndividualEvent(id: UUID): Boolean =
         dsl.deleteFrom(INDIVIDUAL_EVENT)

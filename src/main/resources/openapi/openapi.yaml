@@ -423,6 +423,10 @@ components:
           type: string
           description: Death date as DD.MM.YYYY or year only (YYYY). Sets isLiving to false when provided.
           example: 1945
+        birthPlace:
+          type: string
+          description: Birth place name stored on the BIRT event
+          example: Ankara
 
     UpdateIndividualRequest:
       type: object
@@ -445,6 +449,10 @@ components:
           type: string
           description: Death date as DD.MM.YYYY or year only (YYYY). Send empty string to clear. Sets isLiving to false when provided.
           example: 1945
+        birthPlace:
+          type: string
+          description: Birth place name. Send empty string to clear.
+          example: Ankara
 
     IndividualResponse:
       type: object
@@ -476,6 +484,10 @@ components:
           type: string
           nullable: true
           example: 1945
+        birthPlace:
+          type: string
+          nullable: true
+          example: Ankara
 
     RelatedIndividual:
       type: object
