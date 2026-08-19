@@ -80,6 +80,7 @@ jobs:
             ghcr.io/${{ github.repository }}:latest
             ghcr.io/${{ github.repository }}:${{ github.sha }}
             ghcr.io/${{ github.repository }}:${{ steps.version.outputs.tag }}
+            ghcr.io/${{ github.repository }}:${{ steps.version.outputs.tag }}-staging
 
       - name: Create and push git tag
         env:

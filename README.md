@@ -88,7 +88,18 @@ Commit-Flags:
 - `[skip release]` — kein Tag/Image/Deploy
 - `[skip deploy]` — Tag+Image ja, Homelab-Pin nein
 
-Umgebungsvariablen im Deployment:
+## Staging (PR-Deploy)
+
+Pull Requests gegen `main` triggern [`.github/workflows/staging-pr.yml`](.github/workflows/staging-pr.yml):
+
+- Image: `ghcr.io/okarahan/shejera-backend:pr-{nr}-{sha}-staging` (PR) oder `v0.1.x-staging` (Baseline)
+- Homelab-Pin: `kubernetes/apps/shejera-staging/deployment.yaml` (Namespace `shejera-staging`)
+- URL (VPN): `https://staging.shejera.home.okarahan.arpa`
+- Bootstrap: `/contrib/staging-bootstrap`
+
+Siehe [homelab …/shejera-staging/README.md](https://github.com/okarahan/homelab/blob/main/kubernetes/apps/shejera-staging/README.md) für einmaliges Cluster-Setup (Secrets, DNS).
+
+## Umgebungsvariablen im Deployment
 
 | Variable | Beschreibung |
 |----------|--------------|
