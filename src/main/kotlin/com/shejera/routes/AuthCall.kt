@@ -1,6 +1,7 @@
 package com.shejera.routes
 
 import com.shejera.api.BadRequestException
+import com.shejera.api.ForbiddenException
 import com.shejera.auth.AuthPrincipal
 import com.shejera.services.AuthService
 import io.ktor.http.HttpHeaders
@@ -22,6 +23,13 @@ fun ApplicationCall.principalOrNull(): AuthPrincipal? = attributes.getOrNull(Aut
 
 fun ApplicationCall.requirePrincipal(): AuthPrincipal =
     principalOrNull() ?: authService().requirePrincipal(rawSessionToken())
+
+/** Requires an authenticated admin principal; otherwise 403. */
+fun ApplicationCall.requireAdmin(): AuthPrincipal {
+    val principal = requirePrincipal()
+    if (!principal.isAdmin) throw ForbiddenException("Admin access required")
+    return principal
+}
 
 fun ApplicationCall.rawSessionToken(): String? =
     request.cookies[SESSION_COOKIE]
