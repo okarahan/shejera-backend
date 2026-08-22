@@ -55,6 +55,14 @@ jobs:
           distribution: temurin
           java-version: 21
 
+      - name: Unit tests
+        run: |
+          chmod +x gradlew
+          ./gradlew test --no-daemon \
+            -Pjooq.url=jdbc:postgresql://localhost:5432/shejera \
+            -Pjooq.user=shejera \
+            -Pjooq.password=shejera
+
       - name: Build fat jar
         run: |
           chmod +x gradlew

@@ -19,7 +19,41 @@ env:
   STAGING_SUFFIX: -staging
 
 jobs:
+  test:
+    if: github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: shejera
+          POSTGRES_USER: shejera
+          POSTGRES_PASSWORD: shejera
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U shejera -d shejera"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Unit tests
+        run: |
+          chmod +x gradlew
+          ./gradlew test --no-daemon \
+            -Pjooq.url=jdbc:postgresql://localhost:5432/shejera \
+            -Pjooq.user=shejera \
+            -Pjooq.password=shejera
+
   deploy-staging:
+    needs: test
     if: github.event.action != 'closed'
     runs-on: ubuntu-latest
     services:
