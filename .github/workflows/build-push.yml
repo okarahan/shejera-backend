@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:16-alpine
+        image: postgres:17-alpine
         env:
           POSTGRES_DB: shejera
           POSTGRES_USER: shejera
@@ -58,10 +58,7 @@ jobs:
       - name: Unit tests
         run: |
           chmod +x gradlew
-          ./gradlew test --no-daemon \
-            -Pjooq.url=jdbc:postgresql://localhost:5432/shejera \
-            -Pjooq.user=shejera \
-            -Pjooq.password=shejera
+          ./gradlew test --no-daemon
 
       - name: Build fat jar
         run: |

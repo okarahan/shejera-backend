@@ -22,9 +22,10 @@ jobs:
   test:
     if: github.event.action != 'closed'
     runs-on: ubuntu-latest
+    # Same image as docker-compose.yml. Gradle skips `compose up` if :5432 is already up.
     services:
       postgres:
-        image: postgres:16-alpine
+        image: postgres:17-alpine
         env:
           POSTGRES_DB: shejera
           POSTGRES_USER: shejera
@@ -47,10 +48,7 @@ jobs:
       - name: Unit tests
         run: |
           chmod +x gradlew
-          ./gradlew test --no-daemon \
-            -Pjooq.url=jdbc:postgresql://localhost:5432/shejera \
-            -Pjooq.user=shejera \
-            -Pjooq.password=shejera
+          ./gradlew test --no-daemon
 
   deploy-staging:
     needs: test
@@ -58,7 +56,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:16-alpine
+        image: postgres:17-alpine
         env:
           POSTGRES_DB: shejera
           POSTGRES_USER: shejera

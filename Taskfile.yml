@@ -10,6 +10,11 @@ tasks:
       - "{{.COMPOSE}} up -d"
       - "{{.COMPOSE}} ps"
 
+  test:
+    desc: Unit tests (Gradle starts Compose Postgres if :5432 is down)
+    cmds:
+      - ./gradlew test
+
   db:stop:
     desc: Stop PostgreSQL
     cmds:

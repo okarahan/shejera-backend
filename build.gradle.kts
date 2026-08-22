@@ -1,5 +1,6 @@
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 import org.gradle.api.file.DuplicatesStrategy
+import java.net.Socket
 import java.net.URI
 import java.io.InputStream
 
@@ -102,6 +103,22 @@ sourceSets {
 tasks.named("processResources") {
     dependsOn("downloadTessdata")
 }
+
+fun postgresListening(): Boolean =
+    try {
+        Socket("127.0.0.1", 5432).use { true }
+    } catch (_: Exception) {
+        false
+    }
+
+tasks.register<Exec>("startTestPostgres") {
+    group = "verification"
+    description = "Start Compose Postgres if nothing is listening on :5432"
+    workingDir = layout.projectDirectory.asFile
+    commandLine("docker", "compose", "up", "-d", "--wait")
+    onlyIf { !postgresListening() }
+}
+
 jooq {
     configuration {
         jdbc {
@@ -132,8 +149,13 @@ flyway {
     locations = arrayOf("filesystem:src/main/resources/db/migration")
 }
 
+tasks.named("flywayMigrate") {
+    dependsOn("startTestPostgres")
+}
+
 tasks.named("jooqCodegen") {
     dependsOn("flywayMigrate")
+    inputs.files(fileTree("src/main/resources/db/migration"))
 }
 
 tasks.named("compileKotlin") {
@@ -141,7 +163,6 @@ tasks.named("compileKotlin") {
 }
 
 tasks.test {
-    dependsOn("jooqCodegen")
     useJUnitPlatform()
 }
 
