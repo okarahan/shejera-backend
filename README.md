@@ -52,6 +52,12 @@ Die API ist als **OpenAPI 3.0** spezifiziert:
 - Datei: [`src/main/resources/openapi/openapi.yaml`](src/main/resources/openapi/openapi.yaml)
 - Laufend: `http://localhost:8080/openapi.yaml`
 
+Wichtige Endpunkte/Rollen:
+
+- **Admin-Endpoints** (z. B. Einladungen, Hauptbaum-Schreiben) erfordern `role=admin`.
+- **Contributor-Endpoints** (z. B. `/imports/*`) sind nur für Contributors vorgesehen. Admins, die diese Endpunkte aufrufen, erhalten `403 Forbidden`.
+- Beiträge, die von Admins angelegt würden, erscheinen nicht in der Contributor-Liste.
+
 Fürs Frontend (TypeScript-Client generieren):
 
 ```bash
