@@ -1,10 +1,10 @@
 package com.shejera.routes
 
 import com.shejera.db.AppUserRow
-import com.shejera.db.AuthServiceKey
 import com.shejera.importing.StubImageRecognizer
-import com.shejera.models.ErrorResponse
 import com.shejera.models.ImportCommitRequest
+import com.shejera.plugins.ErrorResponse
+import com.shejera.routes.AuthServiceKey
 import com.shejera.plugins.DslContextKey
 import com.shejera.services.AuthService
 import com.shejera.services.ImportCommitService
@@ -17,6 +17,7 @@ import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
+import io.ktor.http.Headers
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.serialization.kotlinx.json.json
@@ -202,16 +203,15 @@ class ImportRestrictionTest {
                         formData {
                             append(
                                 key = "file",
-                                filename = "test.png",
-                                contentType = ContentType.Image.PNG,
-                            ) {
-                                writeFully(
-                                    byteArrayOf(
-                                        0x89.toByte(), 0x50, 0x4E, 0x47,
-                                        0x0D, 0x0A, 0x1A, 0x0A
-                                    )
-                                )
-                            }
+                                value = byteArrayOf(
+                                    0x89.toByte(), 0x50, 0x4E, 0x47,
+                                    0x0D, 0x0A, 0x1A, 0x0A
+                                ),
+                                headers = Headers.build {
+                                    append(HttpHeaders.ContentDisposition, "filename=\"test.png\"")
+                                    append(HttpHeaders.ContentType, ContentType.Image.PNG.toString())
+                                },
+                            )
                         }
                     )
                 )
@@ -237,16 +237,15 @@ class ImportRestrictionTest {
                         formData {
                             append(
                                 key = "file",
-                                filename = "test.png",
-                                contentType = ContentType.Image.PNG,
-                            ) {
-                                writeFully(
-                                    byteArrayOf(
-                                        0x89.toByte(), 0x50, 0x4E, 0x47,
-                                        0x0D, 0x0A, 0x1A, 0x0A
-                                    )
-                                )
-                            }
+                                value = byteArrayOf(
+                                    0x89.toByte(), 0x50, 0x4E, 0x47,
+                                    0x0D, 0x0A, 0x1A, 0x0A
+                                ),
+                                headers = Headers.build {
+                                    append(HttpHeaders.ContentDisposition, "filename=\"test.png\"")
+                                    append(HttpHeaders.ContentType, ContentType.Image.PNG.toString())
+                                },
+                            )
                         }
                     )
                 )
@@ -337,16 +336,15 @@ class ImportRestrictionTest {
                         formData {
                             append(
                                 key = "file",
-                                filename = "test.png",
-                                contentType = ContentType.Image.PNG,
-                            ) {
-                                writeFully(
-                                    byteArrayOf(
-                                        0x89.toByte(), 0x50, 0x4E, 0x47,
-                                        0x0D, 0x0A, 0x1A, 0x0A
-                                    )
-                                )
-                            }
+                                value = byteArrayOf(
+                                    0x89.toByte(), 0x50, 0x4E, 0x47,
+                                    0x0D, 0x0A, 0x1A, 0x0A
+                                ),
+                                headers = Headers.build {
+                                    append(HttpHeaders.ContentDisposition, "filename=\"test.png\"")
+                                    append(HttpHeaders.ContentType, ContentType.Image.PNG.toString())
+                                },
+                            )
                         }
                     )
                 )
