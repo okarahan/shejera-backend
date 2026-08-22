@@ -1,6 +1,7 @@
 package com.shejera.routes
 
 import com.shejera.api.BadRequestException
+import com.shejera.api.ForbiddenException
 import com.shejera.models.ImportCommitRequest
 import com.shejera.services.ImportCommitService
 import com.shejera.services.ImportService
@@ -33,6 +34,9 @@ fun Route.importRoutes(
 
         post("/upload") {
             val principal = call.requirePrincipal()
+            if (principal.isAdmin) {
+                throw ForbiddenException("Only contributors may import")
+            }
             log.info("[import] POST /imports/upload user={}", principal.id)
             val multipart = call.receiveMultipart()
             var fileName: String? = null
@@ -71,17 +75,26 @@ fun Route.importRoutes(
 
         post("/scan") {
             val principal = call.requirePrincipal()
+            if (principal.isAdmin) {
+                throw ForbiddenException("Only contributors may import")
+            }
             log.info("[import] POST /imports/scan user={}", principal.id)
             call.respond(importService.scan(principal.id))
         }
 
         get("/preview") {
             val principal = call.requirePrincipal()
+            if (principal.isAdmin) {
+                throw ForbiddenException("Only contributors may import")
+            }
             call.respond(importService.preview(principal.id))
         }
 
         post("/commit") {
             val principal = call.requirePrincipal()
+            if (principal.isAdmin) {
+                throw ForbiddenException("Only contributors may import")
+            }
             val body =
                 runCatching { call.receive<ImportCommitRequest>() }
                     .getOrElse { ImportCommitRequest() }
