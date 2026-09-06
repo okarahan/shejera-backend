@@ -26,7 +26,14 @@ class TreeRepositoryVisibilityTest {
         // connection its own empty database, so a DataSource-backed DSLContext
         // would lose every table between statements.
         val connection = DriverManager.getConnection("jdbc:sqlite::memory:")
-        val dsl = DSL.using(connection, SQLDialect.SQLITE)
+        // The generated jOOQ tables are schema-qualified (public.gedcom_tree)
+        // from the Postgres codegen; SQLite has no schema, so drop the
+        // catalog/schema qualifiers or every query fails with "no such table".
+        val dsl = DSL.using(
+            connection,
+            SQLDialect.SQLITE,
+            org.jooq.conf.Settings().withRenderCatalog(false).withRenderSchema(false),
+        )
         dsl.execute(
             """
             CREATE TABLE app_user (
