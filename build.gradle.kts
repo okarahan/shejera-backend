@@ -66,6 +66,12 @@ dependencies {
 
     testImplementation("io.ktor:ktor-server-test-host:$ktorVersion")
     testImplementation(kotlin("test"))
+    // runTest (kotlinx.coroutines.test) is used by ImportRestrictionTest.
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2")
+    // sqlite-jdbc is a TEST-ONLY dependency: the backend unit tests run against an
+    // in-memory SQLite database so no external Postgres is required. It must NOT be
+    // in implementation() or it leaks into the production fat jar / container image.
+    testImplementation("org.xerial:sqlite-jdbc:3.49.1.0")
 }
 
 val generatedTessdata = layout.buildDirectory.dir("generated-tessdata")

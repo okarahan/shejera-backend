@@ -23,6 +23,11 @@ tags:
     description: Persons (GEDCOM INDI)
   - name: families
     description: Families (GEDCOM FAM)
+  - name: imports
+    description: Image-based GEDCOM import (contributors only)
+
+security:
+  - cookieAuth: []
 
 paths:
   /:
@@ -30,6 +35,7 @@ paths:
       tags: [health]
       summary: Plain-text liveness check
       operationId: root
+      security: []
       responses:
         "200":
           description: Service is running
@@ -44,6 +50,7 @@ paths:
       tags: [health]
       summary: Health check
       operationId: health
+      security: []
       responses:
         "200":
           description: OK
@@ -57,6 +64,7 @@ paths:
       tags: [health]
       summary: Readiness check (includes database)
       operationId: ready
+      security: []
       responses:
         "200":
           description: Ready
@@ -333,7 +341,143 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /imports/status:
+    get:
+      tags: [imports]
+      summary: Current import session status
+      description: |
+        Returns the state of the authenticated user's current import session.
+
+        **Access:** only contributors. Admins receive `403 Forbidden`.
+      operationId: importStatus
+      responses:
+        "200":
+          description: Import session status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImportStatusResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /imports/upload:
+    post:
+      tags: [imports]
+      summary: Upload an image for import
+      description: |
+        Upload a single image (jpg, png, webp, gif) that contains the tree to
+        be recognized.
+
+        **Access:** only contributors. Admins receive `403 Forbidden`.
+      operationId: importUpload
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Image file to import
+      responses:
+        "201":
+          description: Uploaded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImportUploadResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /imports/scan:
+    post:
+      tags: [imports]
+      summary: Run image recognition on the uploaded image
+      description: |
+        Recognize people and families in the previously uploaded image.
+
+        **Access:** only contributors. Admins receive `403 Forbidden`.
+      operationId: importScan
+      responses:
+        "200":
+          description: Scan result summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImportScanResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /imports/preview:
+    get:
+      tags: [imports]
+      summary: Preview recognized tree
+      description: |
+        Returns the full recognized tree (people and families) before it is
+        committed to a contribution tree.
+
+        **Access:** only contributors. Admins receive `403 Forbidden`.
+      operationId: importPreview
+      responses:
+        "200":
+          description: Recognized tree preview
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecognizedTree"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /imports/commit:
+    post:
+      tags: [imports]
+      summary: Commit the recognized tree to a contribution tree
+      description: |
+        Persists the recognized people and families into a draft contribution
+        tree. If the user already has a draft contribution tree, it is reused and
+        its content is replaced; otherwise a new contribution tree is created.
+
+        **Access:** only contributors. Admins receive `403 Forbidden`.
+      operationId: importCommit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ImportCommitRequest"
+      responses:
+        "201":
+          description: Committed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImportCommitResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
 components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: shejera_session
+      description: Stateless JWT cookie set after invite redemption.
+
   parameters:
     UuidPathId:
       name: id
@@ -363,6 +507,14 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/ErrorResponse"
+    Forbidden:
+      description: Access denied (e.g. admin attempting a contributor-only action)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+            example:
+              error: Only contributors may import
 
   schemas:
     StatusResponse:
@@ -718,6 +870,149 @@ components:
         description:
           type: string
           nullable: true
+
+    ImportUploadResponse:
+      type: object
+      required: [originalFileName, storedFileName, storedPath, sizeBytes, uploadedAt]
+      properties:
+        originalFileName:
+          type: string
+        storedFileName:
+          type: string
+        storedPath:
+          type: string
+        contentType:
+          type: string
+          nullable: true
+        sizeBytes:
+          type: integer
+          format: int64
+        uploadedAt:
+          type: string
+
+    ImportStatusResponse:
+      type: object
+      required: [hasUpload, hasScanResult, recognizer]
+      properties:
+        hasUpload:
+          type: boolean
+        originalFileName:
+          type: string
+          nullable: true
+        storedFileName:
+          type: string
+          nullable: true
+        storedPath:
+          type: string
+          nullable: true
+        uploadedAt:
+          type: string
+          nullable: true
+        hasScanResult:
+          type: boolean
+        scannedAt:
+          type: string
+          nullable: true
+        recognizer:
+          type: string
+
+    ImportScanResponse:
+      type: object
+      required: [scannedAt, personCount, familyCount, recognizer]
+      properties:
+        scannedAt:
+          type: string
+        personCount:
+          type: integer
+        familyCount:
+          type: integer
+        recognizer:
+          type: string
+
+    RecognizedPerson:
+      type: object
+      required: [tempId]
+      properties:
+        tempId:
+          type: string
+        givenName:
+          type: string
+          nullable: true
+        surname:
+          type: string
+          nullable: true
+        birthDate:
+          type: string
+          nullable: true
+        deathDate:
+          type: string
+          nullable: true
+        birthPlace:
+          type: string
+          nullable: true
+        sex:
+          type: string
+          nullable: true
+        role:
+          type: string
+          nullable: true
+
+    RecognizedFamily:
+      type: object
+      required: [tempId]
+      properties:
+        tempId:
+          type: string
+        spouseTempIds:
+          type: array
+          items:
+            type: string
+        childTempIds:
+          type: array
+          items:
+            type: string
+
+    RecognizedTree:
+      type: object
+      required: [people, families]
+      properties:
+        people:
+          type: array
+          items:
+            $ref: "#/components/schemas/RecognizedPerson"
+        families:
+          type: array
+          items:
+            $ref: "#/components/schemas/RecognizedFamily"
+
+    ImportCommitRequest:
+      type: object
+      properties:
+        treeName:
+          type: string
+          nullable: true
+          description: Name for a newly created contribution tree
+        expiresInDays:
+          type: integer
+          default: 30
+          description: Expiry of a newly created contribution tree in days
+        treeId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Existing draft contribution tree to overwrite
+
+    ImportCommitResponse:
+      type: object
+      required: [treeId, personCount, familyCount]
+      properties:
+        treeId:
+          type: string
+          format: uuid
+        personCount:
+          type: integer
+        familyCount:
+          type: integer
 
     FamilyResponse:
       type: object

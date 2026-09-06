@@ -1,6 +1,7 @@
 package com.shejera.repositories
 
 import com.shejera.api.NotFoundException
+import com.shejera.db.AppUserTable
 import com.shejera.db.GedcomTreeAuthFields
 import com.shejera.db.TreeMetaRow
 import com.shejera.db.generated.tables.records.GedcomTreeRecord
@@ -94,13 +95,31 @@ class TreeRepository(
         userId: UUID,
         isAdmin: Boolean,
     ): List<TreeMetaRow> {
+        val statusFilter =
+            if (isAdmin) {
+                GedcomTreeAuthFields.STATUS.`in`("draft", "submitted", "merged")
+            } else {
+                GedcomTreeAuthFields.STATUS.`in`("draft", "submitted")
+            }
+
+        val contributionCondition =
+            DSL.and(
+                GedcomTreeAuthFields.KIND.eq("contribution"),
+                GedcomTreeAuthFields.CONTRIBUTOR_USER_ID.isNotNull,
+                GedcomTreeAuthFields.CONTRIBUTOR_USER_ID.ne(userId),
+                AppUserTable.ROLE.ne("admin"),
+                statusFilter,
+            )
+
         val condition =
             if (isAdmin) {
                 DSL.or(
                     GedcomTreeAuthFields.KIND.eq("main"),
                     DSL.and(
                         GedcomTreeAuthFields.KIND.eq("contribution"),
-                        GedcomTreeAuthFields.STATUS.`in`("draft", "submitted", "merged"),
+                        GedcomTreeAuthFields.CONTRIBUTOR_USER_ID.isNotNull,
+                        AppUserTable.ROLE.ne("admin"),
+                        statusFilter,
                     ),
                 )
             } else {
@@ -109,7 +128,7 @@ class TreeRepository(
                     DSL.and(
                         GedcomTreeAuthFields.KIND.eq("contribution"),
                         GedcomTreeAuthFields.CONTRIBUTOR_USER_ID.eq(userId),
-                        GedcomTreeAuthFields.STATUS.`in`("draft", "submitted"),
+                        statusFilter,
                     ),
                 )
             }
@@ -127,6 +146,8 @@ class TreeRepository(
                 GEDCOM_TREE.CREATED_AT,
                 GEDCOM_TREE.UPDATED_AT,
             ).from(GEDCOM_TREE)
+            .leftJoin(AppUserTable.TABLE)
+            .on(GedcomTreeAuthFields.CONTRIBUTOR_USER_ID.eq(AppUserTable.ID))
             .where(condition)
             .orderBy(
                 GedcomTreeAuthFields.KIND.asc(),
