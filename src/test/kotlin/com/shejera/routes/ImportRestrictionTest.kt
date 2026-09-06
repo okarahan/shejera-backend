@@ -31,6 +31,7 @@ import kotlinx.serialization.json.Json
 import org.jooq.DSLContext
 import org.jooq.SQLDialect
 import org.jooq.impl.DSL
+import java.sql.DriverManager
 import java.time.OffsetDateTime
 import java.util.UUID
 import javax.sql.DataSource
@@ -58,10 +59,11 @@ class ImportRestrictionTest {
         com.shejera.services.EmailService(com.shejera.config.SmtpConfig.empty())
 
     private fun setupTestDb(): DSLContext {
-        val ds = org.sqlite.SQLiteDataSource().apply {
-            url = "jdbc:sqlite::memory:"
-        }
-        val dsl = DSL.using(ds, SQLDialect.SQLITE)
+        // Bind jOOQ to ONE connection: jdbc:sqlite::memory: gives each new
+        // connection its own empty database, so a DataSource-backed DSLContext
+        // would lose every table between statements.
+        val connection = DriverManager.getConnection("jdbc:sqlite::memory:")
+        val dsl = DSL.using(connection, SQLDialect.SQLITE)
         dsl.execute(
             """
             CREATE TABLE app_user (
@@ -176,10 +178,6 @@ class ImportRestrictionTest {
             }
             attributes.put(AuthServiceKey, authService)
             attributes.put(DslContextKey, dsl)
-            attributes.put(
-                com.shejera.plugins.DataSourceKey,
-                dsl.configuration().connectionProvider().acquire() as DataSource
-            )
             routing {
                 importRoutes(importService, importCommitService)
             }

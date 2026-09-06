@@ -5,6 +5,7 @@ import com.shejera.db.GedcomTreeAuthFields
 import org.jooq.DSLContext
 import org.jooq.SQLDialect
 import org.jooq.impl.DSL
+import java.sql.DriverManager
 import java.time.OffsetDateTime
 import java.util.UUID
 import kotlin.test.Test
@@ -15,14 +16,17 @@ import kotlin.test.assertTrue
  * Tests for [TreeRepository.listAccessible] contributor-side filtering.
  *
  * Uses an in-memory SQLite database so no external Postgres is required.
+ * A single shared connection keeps the in-memory DB alive and consistent
+ * across every statement jOOQ issues.
  */
 class TreeRepositoryVisibilityTest {
 
     private fun setupTestDb(): DSLContext {
-        val ds = org.sqlite.SQLiteDataSource().apply {
-            url = "jdbc:sqlite::memory:"
-        }
-        val dsl = DSL.using(ds, SQLDialect.SQLITE)
+        // Bind jOOQ to ONE connection: jdbc:sqlite::memory: gives each new
+        // connection its own empty database, so a DataSource-backed DSLContext
+        // would lose every table between statements.
+        val connection = DriverManager.getConnection("jdbc:sqlite::memory:")
+        val dsl = DSL.using(connection, SQLDialect.SQLITE)
         dsl.execute(
             """
             CREATE TABLE app_user (
